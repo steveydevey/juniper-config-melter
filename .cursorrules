@@ -1,0 +1,93 @@
+# Cursor Rules for Python Project Development
+
+## Environment Setup Best Practices
+
+### Virtual Environment Issues
+- **ALWAYS** verify virtual environment integrity before proceeding
+- If virtual environment creation fails with unusual errors (e.g., AppImage references), use system Python as fallback
+- Check `which python` and `python -c "import sys; print(sys.executable)"` to verify correct interpreter
+- When virtual environments are corrupted, prefer system Python installation over repeated venv attempts
+
+### Dependency Management
+- Install dependencies globally if virtual environment issues persist
+- Use `pip3 install -r requirements.txt` for consistent dependency installation
+- Always verify imports work before proceeding with development
+- Test both API server and unit tests to ensure complete setup
+
+## Testing Strategy
+
+### Test Execution
+- Use explicit Python interpreter: `python3 -m unittest tests/test_parser.py`
+- Set PYTHONPATH when needed: `PYTHONPATH=$(pwd) python3 -m unittest tests/test_parser.py`
+- Verify test imports work before running full test suites
+- Test both individual components and integrated systems
+
+### API Testing
+- Test FastAPI endpoints with curl: `curl -v http://127.0.0.1:PORT/endpoint`
+- Use different ports to avoid conflicts: 8001, 8002, 8003, etc.
+- Verify HTTP status codes and response content
+- Test health endpoints first to confirm server startup
+
+## Project Structure Guidelines
+
+### Package Organization
+- Create `__init__.py` files in all package directories
+- Use relative imports within packages: `from app.models.network import Network`
+- Maintain clear separation between models, parsers, and API layers
+- Follow the established directory structure from the plan
+
+### Code Quality
+- Implement stub methods with TODO comments for future development
+- Use Pydantic models for data validation and serialization
+- Create comprehensive test coverage for all components
+- Document setup and testing procedures in README.md
+
+## Development Workflow
+
+### Phase-Based Development
+- Complete and test each phase before proceeding
+- Verify all components work together before moving to next phase
+- Document lessons learned and update rules accordingly
+- Maintain working state at end of each phase
+
+### Error Handling
+- When encountering persistent environment issues, adapt approach rather than repeating failed methods
+- Use system tools when virtual environments are problematic
+- Document workarounds and alternative approaches
+- Focus on functionality over perfect environment setup
+
+## Communication Guidelines
+
+- Clearly explain technical decisions and trade-offs
+- Provide specific commands and expected outputs
+- Ask for user preferences when multiple approaches are viable
+- Summarize completed work and next steps clearly
+
+## Key Commands Reference
+
+```bash
+# Environment verification
+which python && python --version
+python -c "import sys; print(sys.executable)"
+
+# Dependency installation
+pip3 install -r requirements.txt
+
+# Testing
+python3 -m unittest tests/test_parser.py
+PYTHONPATH=$(pwd) python3 -m unittest tests/test_parser.py
+
+# API testing
+python3 -m uvicorn app.main:app --port 8001
+curl -v http://127.0.0.1:8001/health
+
+# Project structure
+mkdir -p app/{models,parsers,static/{css,js},templates} tests examples/sample_configs
+```
+
+## Success Criteria
+- All tests pass with explicit Python interpreter
+- API endpoints respond correctly to HTTP requests
+- Project structure follows established patterns
+- Dependencies are properly installed and importable
+- Documentation is clear and actionable 
