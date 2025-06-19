@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juniper Config Melter</title>
+    
+    <!-- Custom CSS with built-in Bootstrap-like styles -->
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="row">
+            <!-- Header -->
+            <div class="col-12">
+                <div class="card mt-3">
+                    <div class="card-header text-center">
+                        <h1>🌐 Juniper Config Melter</h1>
+                        <p class="text-muted mb-0">Parse Juniper Junos configurations and generate network topology diagrams</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="row mt-4">
+            <!-- Upload Section -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>📁 Upload Configuration</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="uploadForm">
+                            <div class="mb-3">
+                                <label for="configFile" class="form-label">Select Juniper Configuration File</label>
+                                <input type="file" class="form-control" id="configFile" accept=".conf,.txt" required>
+                                <div class="form-text">Supported formats: .conf, .txt</div>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100" id="uploadBtn">
+                                <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                Upload & Parse
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Configuration List -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5>📋 Uploaded Configurations</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="configList">
+                            <div class="text-muted">No configurations uploaded yet</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuration Details -->
+                <div class="card mt-3" id="configDetails" style="display: none;">
+                    <div class="card-header">
+                        <h5>📊 Configuration Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="deviceInfo"></div>
+                        <hr>
+                        <div id="networkSummary"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Diagram Section -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>📈 Network Diagrams</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Diagram Type Controls -->
+                        <div class="btn-group w-100 mb-3" id="diagramControls">
+                            <button type="button" class="btn btn-outline-primary" data-diagram="overview">Overview</button>
+                            <button type="button" class="btn btn-outline-primary" data-diagram="topology">Topology</button>
+                            <button type="button" class="btn btn-outline-primary" data-diagram="interfaces">Interfaces</button>
+                            <button type="button" class="btn btn-outline-primary" data-diagram="vlans">VLANs</button>
+                            <button type="button" class="btn btn-outline-primary" data-diagram="routing">Routing</button>
+                        </div>
+
+                        <!-- Diagram Container -->
+                        <div id="diagramContainer">
+                            <div class="text-center">
+                                <div class="text-muted">
+                                    <span style="font-size: 3em;">📁</span>
+                                    <p>Upload a Juniper configuration file to generate network diagrams</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div class="modal" id="loadingModal" tabindex="-1">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-body text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 mb-0">Processing configuration...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom JavaScript -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html> 
