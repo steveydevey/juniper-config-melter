@@ -1,0 +1,13 @@
+graph TD
+    classDef device fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef interface fill:#f3e5f5,stroke:#4a148c,stroke-width:1px
+    classDef vlan fill:#e8f5e8,stroke:#1b5e20,stroke-width:1px
+    classDef route fill:#fff3e0,stroke:#e65100,stroke-width:1px
+    ex3300["ex3300"]
+    class ex3300 device
+    ex3300_vlan_200["VLAN 200<br/>newlab200"]
+    ex3300 -.-> ex3300_vlan_200
+    class ex3300_vlan_200 vlan
+    ex3300_vlan_4000["VLAN 4000<br/>oob"]
+    ex3300 -.-> ex3300_vlan_4000
+    class ex3300_vlan_4000 vlan
