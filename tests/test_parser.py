@@ -31,12 +31,19 @@ class TestJuniperParser(unittest.TestCase):
         self.assertIsNotNone(ge_interface)
         self.assertEqual(ge_interface.description, "uplink to edge router")
         
+        # Check interface with VLAN membership
+        vlan_interface = next((i for i in interfaces if i.name == "ge-0/0/19"), None)
+        self.assertIsNotNone(vlan_interface)
+        self.assertIsNotNone(vlan_interface.vlan_members)
+        self.assertIn("200", vlan_interface.vlan_members)
+        self.assertEqual(vlan_interface.port_mode, "access")
+        
         # Check interface with IP address
         vlan_interface = next((i for i in interfaces if i.name == "vlan"), None)
         self.assertIsNotNone(vlan_interface)
     
     def test_vlan_parsing(self):
-        """Test VLAN parsing"""
+        """Test VLAN parsing with interface assignments"""
         vlans = self.parser.parse_vlans(self.config_text)
         
         # Should find VLANs
@@ -47,6 +54,12 @@ class TestJuniperParser(unittest.TestCase):
         self.assertIsNotNone(newlab_vlan)
         self.assertEqual(newlab_vlan.vlan_id, 200)
         self.assertEqual(newlab_vlan.description, "vlan 200 for the lab")
+        
+        # Check that VLANs have interface assignments
+        oob_vlan = next((v for v in vlans if v.name == "oob"), None)
+        self.assertIsNotNone(oob_vlan)
+        self.assertIsNotNone(oob_vlan.interfaces)
+        self.assertGreater(len(oob_vlan.interfaces), 0)
     
     def test_routing_parsing(self):
         """Test routing parsing"""
@@ -95,8 +108,8 @@ class TestMermaidGenerator(unittest.TestCase):
         """Test topology diagram generation"""
         diagram = self.generator.generate_topology(self.network)
         
-        # Should start with graph TD
-        self.assertTrue(diagram.startswith("graph TD"))
+        # Should start with graph LR
+        self.assertTrue(diagram.startswith("graph LR"))
         
         # Should contain device node
         self.assertIn("ex3300", diagram)
@@ -108,8 +121,8 @@ class TestMermaidGenerator(unittest.TestCase):
         """Test VLAN diagram generation"""
         diagram = self.generator.generate_vlan_diagram(self.network)
         
-        # Should start with graph TD
-        self.assertTrue(diagram.startswith("graph TD"))
+        # Should start with graph LR
+        self.assertTrue(diagram.startswith("graph LR"))
         
         # Should contain VLAN information
         self.assertIn("VLAN 200", diagram)
@@ -130,8 +143,8 @@ class TestMermaidGenerator(unittest.TestCase):
         """Test interface diagram generation"""
         diagram = self.generator.generate_interface_diagram(self.network)
         
-        # Should start with graph TD
-        self.assertTrue(diagram.startswith("graph TD"))
+        # Should start with graph LR
+        self.assertTrue(diagram.startswith("graph LR"))
         
         # Should contain interface groups
         self.assertIn("GE Interfaces", diagram)

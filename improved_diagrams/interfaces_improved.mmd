@@ -1,0 +1,212 @@
+graph LR
+    classDef device fill:#e1f5fe,stroke:#01579b,stroke-width:3px,color:#000
+    classDef interfaceGroup fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000
+    classDef interface fill:#ffffff,stroke:#666,stroke-width:1px,color:#000
+    classDef vlanInterface fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px,color:#000
+    classDef trunkInterface fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000
+    ex3300["ex3300"]
+    class ex3300 device
+    ex3300_ge["GE Interfaces"]
+    ex3300 --> ex3300_ge
+    class ex3300_ge interfaceGroup
+    ex3300_ge_ge_0/0/0["ge-0/0/0<br/>uplink to edge router"]
+    ex3300_ge --> ex3300_ge_ge_0/0/0
+    class ex3300_ge_ge_0/0/0 interface
+    ex3300_ge_ge_0/0/1["ge-0/0/1<br/>Mode: access"]
+    ex3300_ge --> ex3300_ge_ge_0/0/1
+    class ex3300_ge_ge_0/0/1 interface
+    ex3300_ge_ge_0/0/2["ge-0/0/2<br/>r610 - port 1"]
+    ex3300_ge --> ex3300_ge_ge_0/0/2
+    class ex3300_ge_ge_0/0/2 interface
+    ex3300_ge_ge_0/0/3["ge-0/0/3<br/>r610 - port 2"]
+    ex3300_ge --> ex3300_ge_ge_0/0/3
+    class ex3300_ge_ge_0/0/3 interface
+    ex3300_ge_ge_0/0/4["ge-0/0/4<br/>r610 - port 3<br/>Mode: access"]
+    ex3300_ge --> ex3300_ge_ge_0/0/4
+    class ex3300_ge_ge_0/0/4 interface
+    ex3300_ge_ge_0/0/5["ge-0/0/5<br/>r610 - port 4<br/>Mode: access"]
+    ex3300_ge --> ex3300_ge_ge_0/0/5
+    class ex3300_ge_ge_0/0/5 interface
+    ex3300_ge_ge_0/0/6["ge-0/0/6<br/>orange - port 1"]
+    ex3300_ge --> ex3300_ge_ge_0/0/6
+    class ex3300_ge_ge_0/0/6 interface
+    ex3300_ge_ge_0/0/7["ge-0/0/7<br/>orange - port 2"]
+    ex3300_ge --> ex3300_ge_ge_0/0/7
+    class ex3300_ge_ge_0/0/7 interface
+    ex3300_ge_ge_0/0/8["ge-0/0/8"]
+    ex3300_ge --> ex3300_ge_ge_0/0/8
+    class ex3300_ge_ge_0/0/8 interface
+    ex3300_ge_ge_0/0/9["ge-0/0/9<br/>Smartthings hub"]
+    ex3300_ge --> ex3300_ge_ge_0/0/9
+    class ex3300_ge_ge_0/0/9 interface
+    ex3300_ge_ge_0/0/10["ge-0/0/10<br/>Arlo hub"]
+    ex3300_ge --> ex3300_ge_ge_0/0/10
+    class ex3300_ge_ge_0/0/10 interface
+    ex3300_ge_ge_0/0/11["ge-0/0/11"]
+    ex3300_ge --> ex3300_ge_ge_0/0/11
+    class ex3300_ge_ge_0/0/11 interface
+    ex3300_ge_ge_0/0/12["ge-0/0/12<br/>Ubiquiti WAP"]
+    ex3300_ge --> ex3300_ge_ge_0/0/12
+    class ex3300_ge_ge_0/0/12 interface
+    ex3300_ge_ge_0/0/13["ge-0/0/13"]
+    ex3300_ge --> ex3300_ge_ge_0/0/13
+    class ex3300_ge_ge_0/0/13 interface
+    ex3300_ge_ge_0/0/14["ge-0/0/14<br/>DSL Modem"]
+    ex3300_ge --> ex3300_ge_ge_0/0/14
+    class ex3300_ge_ge_0/0/14 interface
+    ex3300_ge_ge_0/0/15["ge-0/0/15"]
+    ex3300_ge --> ex3300_ge_ge_0/0/15
+    class ex3300_ge_ge_0/0/15 interface
+    ex3300_ge_ge_0/0/16["ge-0/0/16<br/>APU igb2"]
+    ex3300_ge --> ex3300_ge_ge_0/0/16
+    class ex3300_ge_ge_0/0/16 interface
+    ex3300_ge_ge_0/0/17["ge-0/0/17"]
+    ex3300_ge --> ex3300_ge_ge_0/0/17
+    class ex3300_ge_ge_0/0/17 interface
+    ex3300_ge_ge_0/0/18["ge-0/0/18"]
+    ex3300_ge --> ex3300_ge_ge_0/0/18
+    class ex3300_ge_ge_0/0/18 interface
+    ex3300_ge_ge_0/0/19["ge-0/0/19<br/>VLAN: 200<br/>Mode: access"]
+    ex3300_ge --> ex3300_ge_ge_0/0/19
+    class ex3300_ge_ge_0/0/19 vlanInterface
+    ex3300_ge_ge_0/0/20["ge-0/0/20"]
+    ex3300_ge --> ex3300_ge_ge_0/0/20
+    class ex3300_ge_ge_0/0/20 interface
+    ex3300_ge_ge_0/0/21["ge-0/0/21"]
+    ex3300_ge --> ex3300_ge_ge_0/0/21
+    class ex3300_ge_ge_0/0/21 interface
+    ex3300_ge_ge_0/0/22["ge-0/0/22"]
+    ex3300_ge --> ex3300_ge_ge_0/0/22
+    class ex3300_ge_ge_0/0/22 interface
+    ex3300_ge_ge_0/0/23["ge-0/0/23"]
+    ex3300_ge --> ex3300_ge_ge_0/0/23
+    class ex3300_ge_ge_0/0/23 interface
+    ex3300_ge_ge_0/0/24["ge-0/0/24<br/>r610 - oob - idrac<br/>VLAN: oob<br/>Mode: access"]
+    ex3300_ge --> ex3300_ge_ge_0/0/24
+    class ex3300_ge_ge_0/0/24 vlanInterface
+    ex3300_ge_ge_0/0/25["ge-0/0/25<br/>orange - oob - ipmi<br/>VLAN: oob<br/>Mode: access"]
+    ex3300_ge --> ex3300_ge_ge_0/0/25
+    class ex3300_ge_ge_0/0/25 vlanInterface
+    ex3300_ge_ge_0/0/26["ge-0/0/26"]
+    ex3300_ge --> ex3300_ge_ge_0/0/26
+    class ex3300_ge_ge_0/0/26 interface
+    ex3300_ge_ge_0/0/27["ge-0/0/27"]
+    ex3300_ge --> ex3300_ge_ge_0/0/27
+    class ex3300_ge_ge_0/0/27 interface
+    ex3300_ge_ge_0/0/28["ge-0/0/28"]
+    ex3300_ge --> ex3300_ge_ge_0/0/28
+    class ex3300_ge_ge_0/0/28 interface
+    ex3300_ge_ge_0/0/29["ge-0/0/29<br/>grandstream ata"]
+    ex3300_ge --> ex3300_ge_ge_0/0/29
+    class ex3300_ge_ge_0/0/29 interface
+    ex3300_ge_ge_0/0/30["ge-0/0/30<br/>Mode: access"]
+    ex3300_ge --> ex3300_ge_ge_0/0/30
+    class ex3300_ge_ge_0/0/30 interface
+    ex3300_ge_ge_0/0/31["ge-0/0/31<br/>port 31 for the newlab200 vlan<br/>VLAN: newlab200<br/>Mode: access"]
+    ex3300_ge --> ex3300_ge_ge_0/0/31
+    class ex3300_ge_ge_0/0/31 vlanInterface
+    ex3300_ge_ge_0/0/32["ge-0/0/32<br/>VLAN: newlab200<br/>Mode: access"]
+    ex3300_ge --> ex3300_ge_ge_0/0/32
+    class ex3300_ge_ge_0/0/32 vlanInterface
+    ex3300_ge_ge_0/0/33["ge-0/0/33<br/>VLAN: newlab200<br/>Mode: access"]
+    ex3300_ge --> ex3300_ge_ge_0/0/33
+    class ex3300_ge_ge_0/0/33 vlanInterface
+    ex3300_ge_ge_0/0/34["ge-0/0/34<br/>VLAN: newlab200<br/>Mode: access"]
+    ex3300_ge --> ex3300_ge_ge_0/0/34
+    class ex3300_ge_ge_0/0/34 vlanInterface
+    ex3300_ge_ge_0/0/35["ge-0/0/35<br/>VLAN: newlab200<br/>Mode: access"]
+    ex3300_ge --> ex3300_ge_ge_0/0/35
+    class ex3300_ge_ge_0/0/35 vlanInterface
+    ex3300_ge_ge_0/0/36["ge-0/0/36<br/>APU igb2"]
+    ex3300_ge --> ex3300_ge_ge_0/0/36
+    class ex3300_ge_ge_0/0/36 interface
+    ex3300_ge_ge_0/0/37["ge-0/0/37"]
+    ex3300_ge --> ex3300_ge_ge_0/0/37
+    class ex3300_ge_ge_0/0/37 interface
+    ex3300_ge_ge_0/0/38["ge-0/0/38"]
+    ex3300_ge --> ex3300_ge_ge_0/0/38
+    class ex3300_ge_ge_0/0/38 interface
+    ex3300_ge_ge_0/0/39["ge-0/0/39"]
+    ex3300_ge --> ex3300_ge_ge_0/0/39
+    class ex3300_ge_ge_0/0/39 interface
+    ex3300_ge_ge_0/0/40["ge-0/0/40"]
+    ex3300_ge --> ex3300_ge_ge_0/0/40
+    class ex3300_ge_ge_0/0/40 interface
+    ex3300_ge_ge_0/0/41["ge-0/0/41<br/>Mode: access"]
+    ex3300_ge --> ex3300_ge_ge_0/0/41
+    class ex3300_ge_ge_0/0/41 interface
+    ex3300_ge_ge_0/0/42["ge-0/0/42"]
+    ex3300_ge --> ex3300_ge_ge_0/0/42
+    class ex3300_ge_ge_0/0/42 interface
+    ex3300_ge_ge_0/0/43["ge-0/0/43"]
+    ex3300_ge --> ex3300_ge_ge_0/0/43
+    class ex3300_ge_ge_0/0/43 interface
+    ex3300_ge_ge_0/0/44["ge-0/0/44<br/>Mode: access"]
+    ex3300_ge --> ex3300_ge_ge_0/0/44
+    class ex3300_ge_ge_0/0/44 interface
+    ex3300_ge_ge_0/0/45["ge-0/0/45"]
+    ex3300_ge --> ex3300_ge_ge_0/0/45
+    class ex3300_ge_ge_0/0/45 interface
+    ex3300_ge_ge_0/0/46["ge-0/0/46<br/>Mode: access"]
+    ex3300_ge --> ex3300_ge_ge_0/0/46
+    class ex3300_ge_ge_0/0/46 interface
+    ex3300_ge_ge_0/0/47["ge-0/0/47<br/>netgear in office<br/>Mode: access"]
+    ex3300_ge --> ex3300_ge_ge_0/0/47
+    class ex3300_ge_ge_0/0/47 interface
+    ex3300_ge_ge_0/1/0["ge-0/1/0"]
+    ex3300_ge --> ex3300_ge_ge_0/1/0
+    class ex3300_ge_ge_0/1/0 interface
+    ex3300_ge_ge_0/1/1["ge-0/1/1"]
+    ex3300_ge --> ex3300_ge_ge_0/1/1
+    class ex3300_ge_ge_0/1/1 interface
+    ex3300_ge_ge_0/1/2["ge-0/1/2"]
+    ex3300_ge --> ex3300_ge_ge_0/1/2
+    class ex3300_ge_ge_0/1/2 interface
+    ex3300_ge_ge_0/1/3["ge-0/1/3"]
+    ex3300_ge --> ex3300_ge_ge_0/1/3
+    class ex3300_ge_ge_0/1/3 interface
+    ex3300_vlan["VLAN Interfaces"]
+    ex3300 --> ex3300_vlan
+    class ex3300_vlan interfaceGroup
+    ex3300_vlan_vlan["vlan"]
+    ex3300_vlan --> ex3300_vlan_vlan
+    class ex3300_vlan_vlan interface
+    ex3300_vlan_vlan["vlan"]
+    ex3300_vlan --> ex3300_vlan_vlan
+    class ex3300_vlan_vlan interface
+    ex3300_vlan_vlan["vlan"]
+    ex3300_vlan --> ex3300_vlan_vlan
+    class ex3300_vlan_vlan interface
+    ex3300_vlan_vlan["vlan"]
+    ex3300_vlan --> ex3300_vlan_vlan
+    class ex3300_vlan_vlan interface
+    ex3300_vlan_vlan["vlan"]
+    ex3300_vlan --> ex3300_vlan_vlan
+    class ex3300_vlan_vlan interface
+    ex3300_vlan_vlan["vlan"]
+    ex3300_vlan --> ex3300_vlan_vlan
+    class ex3300_vlan_vlan interface
+    ex3300_vlan_vlan["vlan"]
+    ex3300_vlan --> ex3300_vlan_vlan
+    class ex3300_vlan_vlan interface
+    ex3300_vlan_vlan["vlan"]
+    ex3300_vlan --> ex3300_vlan_vlan
+    class ex3300_vlan_vlan interface
+    ex3300_vlan_vlan["vlan<br/>IP: 192.168.254.9/24<br/>this is the normal network"]
+    ex3300_vlan --> ex3300_vlan_vlan
+    class ex3300_vlan_vlan interface
+    ex3300_xe["XE Interfaces"]
+    ex3300 --> ex3300_xe
+    class ex3300_xe interfaceGroup
+    ex3300_xe_xe_0/1/0["xe-0/1/0"]
+    ex3300_xe --> ex3300_xe_xe_0/1/0
+    class ex3300_xe_xe_0/1/0 interface
+    ex3300_xe_xe_0/1/1["xe-0/1/1"]
+    ex3300_xe --> ex3300_xe_xe_0/1/1
+    class ex3300_xe_xe_0/1/1 interface
+    ex3300_xe_xe_0/1/2["xe-0/1/2"]
+    ex3300_xe --> ex3300_xe_xe_0/1/2
+    class ex3300_xe_xe_0/1/2 interface
+    ex3300_xe_xe_0/1/3["xe-0/1/3"]
+    ex3300_xe --> ex3300_xe_xe_0/1/3
+    class ex3300_xe_xe_0/1/3 interface

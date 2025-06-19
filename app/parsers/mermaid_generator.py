@@ -10,12 +10,21 @@ class MermaidGenerator:
     
     def generate_topology(self, network: Network) -> str:
         """Generate a physical topology diagram showing device connections"""
-        mermaid_lines = ["graph TD"]
+        mermaid_lines = ["graph LR"]
+        
+        # Add styling for better visual appeal
+        mermaid_lines.extend([
+            "    classDef device fill:#e1f5fe,stroke:#01579b,stroke-width:3px,color:#000",
+            "    classDef interface fill:#ffffff,stroke:#666,stroke-width:1px,color:#000",
+            "    classDef vlanInterface fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px,color:#000",
+            "    classDef ipInterface fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000"
+        ])
         
         for device in network.devices:
             # Add device node
             device_id = self._sanitize_id(device.hostname)
             mermaid_lines.append(f'    {device_id}["{device.hostname}"]')
+            mermaid_lines.append(f'    class {device_id} device')
             
             # Add interface nodes and connections
             for interface in device.interfaces:
@@ -27,9 +36,20 @@ class MermaidGenerator:
                     interface_label += f"<br/>{interface.ip}"
                 if interface.description:
                     interface_label += f"<br/>{interface.description}"
+                if interface.vlan_members:
+                    vlan_info = ", ".join(interface.vlan_members)
+                    interface_label += f"<br/>VLAN: {vlan_info}"
                 
                 mermaid_lines.append(f'    {interface_id}["{interface_label}"]')
                 mermaid_lines.append(f'    {device_id} --> {interface_id}')
+                
+                # Apply styling based on interface characteristics
+                if interface.vlan_members:
+                    mermaid_lines.append(f'    class {interface_id} vlanInterface')
+                elif interface.ip:
+                    mermaid_lines.append(f'    class {interface_id} ipInterface')
+                else:
+                    mermaid_lines.append(f'    class {interface_id} interface')
         
         return "\n".join(mermaid_lines)
     
@@ -52,14 +72,22 @@ class MermaidGenerator:
         return "\n".join(mermaid_lines)
     
     def generate_vlan_diagram(self, network: Network) -> str:
-        """Generate a VLAN diagram showing VLAN relationships"""
-        mermaid_lines = ["graph TD"]
+        """Generate a VLAN diagram showing VLAN relationships and interface assignments"""
+        mermaid_lines = ["graph LR"]
+        
+        # Add styling for better visual appeal
+        mermaid_lines.extend([
+            "    classDef device fill:#e1f5fe,stroke:#01579b,stroke-width:3px,color:#000",
+            "    classDef vlan fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px,color:#000",
+            "    classDef interface fill:#f3e5f5,stroke:#4a148c,stroke-width:1px,color:#000"
+        ])
         
         for device in network.devices:
             device_id = self._sanitize_id(device.hostname)
             mermaid_lines.append(f'    {device_id}["{device.hostname}"]')
+            mermaid_lines.append(f'    class {device_id} device')
             
-            # Add VLANs
+            # Add VLANs with their interface assignments
             if device.routing and "vlans" in device.routing:
                 for vlan in device.routing["vlans"]:
                     vlan_id = f"{device_id}_vlan_{vlan.vlan_id}"
@@ -69,16 +97,42 @@ class MermaidGenerator:
                     
                     mermaid_lines.append(f'    {vlan_id}["{vlan_label}"]')
                     mermaid_lines.append(f'    {device_id} --> {vlan_id}')
+                    mermaid_lines.append(f'    class {vlan_id} vlan')
+                    
+                    # Add interfaces assigned to this VLAN
+                    if vlan.interfaces:
+                        for interface_name in vlan.interfaces:
+                            interface_id = f"{vlan_id}_{interface_name.replace('-', '_')}"
+                            interface_label = interface_name
+                            
+                            # Find the interface object to get additional info
+                            interface_obj = next((i for i in device.interfaces if i.name == interface_name), None)
+                            if interface_obj and interface_obj.description:
+                                interface_label += f"<br/>{interface_obj.description}"
+                            
+                            mermaid_lines.append(f'    {interface_id}["{interface_label}"]')
+                            mermaid_lines.append(f'    {vlan_id} --> {interface_id}')
+                            mermaid_lines.append(f'    class {interface_id} interface')
         
         return "\n".join(mermaid_lines)
     
     def generate_interface_diagram(self, network: Network) -> str:
-        """Generate a detailed interface diagram"""
-        mermaid_lines = ["graph TD"]
+        """Generate a detailed interface diagram with VLAN information"""
+        mermaid_lines = ["graph LR"]
+        
+        # Add styling for better visual appeal
+        mermaid_lines.extend([
+            "    classDef device fill:#e1f5fe,stroke:#01579b,stroke-width:3px,color:#000",
+            "    classDef interfaceGroup fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000",
+            "    classDef interface fill:#ffffff,stroke:#666,stroke-width:1px,color:#000",
+            "    classDef vlanInterface fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px,color:#000",
+            "    classDef trunkInterface fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000"
+        ])
         
         for device in network.devices:
             device_id = self._sanitize_id(device.hostname)
             mermaid_lines.append(f'    {device_id}["{device.hostname}"]')
+            mermaid_lines.append(f'    class {device_id} device')
             
             # Group interfaces by type
             interface_groups = {}
@@ -94,18 +148,34 @@ class MermaidGenerator:
                 group_label = f"{interface_type.upper()} Interfaces"
                 mermaid_lines.append(f'    {group_id}["{group_label}"]')
                 mermaid_lines.append(f'    {device_id} --> {group_id}')
+                mermaid_lines.append(f'    class {group_id} interfaceGroup')
                 
                 # Add individual interfaces
                 for interface in interfaces:
                     interface_id = f"{group_id}_{interface.name.replace('-', '_')}"
+                    
+                    # Create interface label with VLAN information
                     interface_label = f"{interface.name}"
                     if interface.ip:
-                        interface_label += f"<br/>{interface.ip}"
+                        interface_label += f"<br/>IP: {interface.ip}"
                     if interface.description:
                         interface_label += f"<br/>{interface.description}"
+                    if interface.vlan_members:
+                        vlan_info = ", ".join(interface.vlan_members)
+                        interface_label += f"<br/>VLAN: {vlan_info}"
+                    if interface.port_mode:
+                        interface_label += f"<br/>Mode: {interface.port_mode}"
                     
                     mermaid_lines.append(f'    {interface_id}["{interface_label}"]')
                     mermaid_lines.append(f'    {group_id} --> {interface_id}')
+                    
+                    # Apply appropriate styling based on interface type
+                    if interface.vlan_members:
+                        mermaid_lines.append(f'    class {interface_id} vlanInterface')
+                    elif interface.port_mode == "trunk":
+                        mermaid_lines.append(f'    class {interface_id} trunkInterface')
+                    else:
+                        mermaid_lines.append(f'    class {interface_id} interface')
         
         return "\n".join(mermaid_lines)
     

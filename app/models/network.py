@@ -6,6 +6,8 @@ class Interface(BaseModel):
     ip: Optional[str] = None
     description: Optional[str] = None
     status: Optional[str] = None
+    vlan_members: Optional[List[str]] = None
+    port_mode: Optional[str] = None
 
 class Device(BaseModel):
     hostname: str
