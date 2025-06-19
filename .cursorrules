@@ -90,4 +90,195 @@ mkdir -p app/{models,parsers,static/{css,js},templates} tests examples/sample_co
 - API endpoints respond correctly to HTTP requests
 - Project structure follows established patterns
 - Dependencies are properly installed and importable
-- Documentation is clear and actionable 
+- Documentation is clear and actionable
+
+# Cursor Rules for Juniper Config Melter Project
+
+## Phase 2 Lessons Learned & Best Practices
+
+### Juniper Configuration Parsing Patterns
+
+#### Regex Strategy for Nested Configurations
+- **Use `re.DOTALL` flag** for parsing multi-line configuration blocks
+- **Pattern for interface blocks**: `r'(vlan|\w+-\d+/\d+/\d+)\s*\{([^}]+)\}'`
+- **Handle nested family blocks**: `r'family\s+inet\s*\{[^}]*address\s+(\d+\.\d+\.\d+\.\d+/\d+);[^}]*\}'`
+- **Extract descriptions**: `r'description\s+"([^"]+)";'`
+- **Parse VLAN definitions**: `r'(\w+)\s*\{[^}]*description\s+"([^"]+)";[^}]*vlan-id\s+(\d+);[^}]*\}'`
+
+#### Configuration Structure Insights
+- Juniper configs use hierarchical block structure with `{` and `}`
+- Interfaces can be physical (`ge-0/0/0`) or logical (`vlan`)
+- IP addresses are nested within `family inet` blocks
+- VLANs have both names and numeric IDs
+- Static routes follow pattern: `route <destination> next-hop <gateway>;`
+
+### Mermaid.js Generation Best Practices
+
+#### Diagram Type Strategy
+- **Topology diagrams**: Show physical connections, use `graph TD`
+- **Routing diagrams**: Show logical paths, use `graph LR` for horizontal layout
+- **VLAN diagrams**: Group by VLAN relationships
+- **Interface diagrams**: Group by interface type (GE, XE, etc.)
+- **Overview diagrams**: Include styling classes for visual appeal
+
+#### Node ID Sanitization
+```python
+def _sanitize_id(self, text: str) -> str:
+    # Remove special characters and replace with underscores
+    sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', text)
+    # Ensure it starts with a letter
+    if sanitized and not sanitized[0].isalpha():
+        sanitized = f"node_{sanitized}"
+    return sanitized if sanitized else "node"
+```
+
+#### Styling Classes for Visual Appeal
+```mermaid
+classDef device fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+classDef interface fill:#f3e5f5,stroke:#4a148c,stroke-width:1px
+classDef vlan fill:#e8f5e8,stroke:#1b5e20,stroke-width:1px
+classDef route fill:#fff3e0,stroke:#e65100,stroke-width:1px
+```
+
+### Data Model Design Patterns
+
+#### Pydantic Model Structure
+- **Core models** in `app/models/network.py` for generic network concepts
+- **Vendor-specific models** in `app/models/juniper.py` for Juniper-specific elements
+- **Use Optional fields** for elements that may not be present
+- **Include validation** through Pydantic's built-in type checking
+
+#### Model Relationships
+```python
+# Network contains Devices
+class Network(BaseModel):
+    devices: List[Device]
+    connections: Optional[List[dict]] = None
+
+# Device contains Interfaces and Routing info
+class Device(BaseModel):
+    hostname: str
+    interfaces: List[Interface]
+    routing: Optional[dict] = None
+
+# Vendor-specific models for detailed parsing
+class VLAN(BaseModel):
+    name: str
+    vlan_id: int
+    description: Optional[str] = None
+```
+
+### Testing Strategy for Parsers
+
+#### Test Structure
+- **Load real configuration files** for realistic testing
+- **Test individual parsing methods** before full integration
+- **Verify extracted data accuracy** with known values
+- **Test edge cases** (missing descriptions, no IP addresses, etc.)
+
+#### Test Patterns
+```python
+def setUp(self):
+    # Load test configuration once
+    config_path = os.path.join(os.path.dirname(__file__), '..', 'test-configs', 'ex3300-1.conf')
+    with open(config_path, 'r') as f:
+        self.config_text = f.read()
+
+def test_specific_elements(self):
+    # Test specific known values
+    hostname = self.parser._extract_hostname(self.config_text)
+    self.assertEqual(hostname, "ex3300")
+```
+
+### Performance Optimization Insights
+
+#### Parsing Efficiency
+- **Use `re.finditer()`** for multiple matches instead of `re.findall()`
+- **Compile regex patterns** if used repeatedly
+- **Process in single pass** when possible to avoid multiple file reads
+- **Limit interface display** in overview diagrams (e.g., first 5 interfaces)
+
+#### Memory Management
+- **Parse incrementally** for large configuration files
+- **Use generators** for large datasets
+- **Clean up temporary variables** in parsing loops
+
+### Error Handling Patterns
+
+#### Graceful Degradation
+- **Return empty lists** instead of None for missing elements
+- **Use default values** for optional fields
+- **Continue parsing** even if individual elements fail
+- **Log parsing errors** for debugging without stopping execution
+
+#### Validation Strategy
+```python
+# Extract with fallback
+hostname_match = re.search(r'host-name\s+(\S+);', config_text)
+return hostname_match.group(1) if hostname_match else "unknown"
+
+# Safe list operations
+for interface in device.interfaces[:5]:  # Limit to prevent overflow
+    # Process interface
+```
+
+### Project Structure Lessons
+
+#### Module Organization
+- **Separate concerns**: Parsers, models, generators in different modules
+- **Clear imports**: Use relative imports within packages
+- **Consistent naming**: Follow established patterns (e.g., `juniper_parser.py`)
+- **Documentation**: Include docstrings for all public methods
+
+#### File Organization
+```
+app/
+├── models/          # Data structures
+├── parsers/         # Parsing logic
+├── static/          # Web assets (future)
+└── templates/       # HTML templates (future)
+```
+
+### Development Workflow Insights
+
+#### Iterative Development
+- **Start with simple regex patterns** and refine based on test results
+- **Test with real data** early and often
+- **Build incrementally** - parse one element type at a time
+- **Validate output** visually by examining generated diagrams
+
+#### Debugging Strategies
+- **Print intermediate results** during development
+- **Use demo scripts** to showcase functionality
+- **Save generated output** to files for inspection
+- **Test with multiple configuration types** to ensure robustness
+
+### Future Development Considerations
+
+#### Extensibility Patterns
+- **Plugin architecture** for different diagram types
+- **Configuration-driven** parsing rules
+- **Template system** for diagram generation
+- **API-first design** for web interface integration
+
+#### Scalability Planning
+- **Support for multiple devices** in single network
+- **Caching parsed results** for large configurations
+- **Background processing** for complex diagrams
+- **Export formats** beyond Mermaid.js
+
+## Key Success Factors from Phase 2
+
+1. **Realistic Testing**: Using actual Juniper configurations revealed edge cases
+2. **Incremental Development**: Building parser components separately before integration
+3. **Visual Validation**: Generated diagrams provided immediate feedback on parsing accuracy
+4. **Comprehensive Models**: Pydantic models ensured data consistency and validation
+5. **Modular Design**: Separating parser and generator allowed independent testing and development
+
+## Common Pitfalls to Avoid
+
+1. **Over-complex regex**: Start simple and add complexity as needed
+2. **Hard-coded assumptions**: Test with various configuration formats
+3. **Missing error handling**: Always provide fallbacks for missing data
+4. **Performance neglect**: Consider parsing efficiency for large files
+5. **Insufficient testing**: Test with real-world data, not just examples 
