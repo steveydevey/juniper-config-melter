@@ -1,8 +1,10 @@
-// Juniper Config Melter - Frontend JavaScript (No external dependencies)
+// Juniper Config Melter - Frontend JavaScript (With Mermaid.js Integration)
 
 // Global variables
 let currentConfigId = null;
 let currentDiagrams = {};
+let currentDisplayMode = 'render'; // 'render' or 'code'
+let mermaidInitialized = false;
 let loadingModal = null;
 
 // Simple modal implementation
@@ -31,16 +33,38 @@ class SimpleModal {
     
     show() {
         this.element.style.display = 'block';
-        this.element.classList.add('show');
+        this.element.style.opacity = '1';
         this.isVisible = true;
         document.body.style.overflow = 'hidden'; // Prevent background scrolling
     }
     
     hide() {
         this.element.style.display = 'none';
-        this.element.classList.remove('show');
+        this.element.style.opacity = '0';
         this.isVisible = false;
         document.body.style.overflow = ''; // Restore scrolling
+    }
+}
+
+// Initialize Mermaid.js
+function initializeMermaid() {
+    if (typeof mermaid !== 'undefined' && !mermaidInitialized) {
+        try {
+            mermaid.initialize({
+                startOnLoad: false,
+                theme: 'default',
+                flowchart: {
+                    useMaxWidth: true,
+                    htmlLabels: true,
+                    curve: 'basis'
+                },
+                securityLevel: 'loose'
+            });
+            mermaidInitialized = true;
+            console.log('Mermaid.js initialized successfully');
+        } catch (error) {
+            console.warn('Failed to initialize Mermaid.js:', error);
+        }
     }
 }
 
@@ -78,6 +102,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeApp() {
+    // Initialize Mermaid.js
+    initializeMermaid();
+    
     // Initialize simple modal
     const modalElement = document.getElementById('loadingModal');
     if (modalElement) {
@@ -119,6 +146,22 @@ function setupEventListeners() {
     } else {
         console.error('Diagram controls not found');
     }
+    
+    // Display mode toggle
+    const displayModeInputs = document.querySelectorAll('input[name="displayMode"]');
+    displayModeInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            currentDisplayMode = this.value;
+            if (currentConfigId && currentDiagrams) {
+                // Re-display current diagram with new mode
+                const activeDiagramBtn = document.querySelector('#diagramControls .btn.active');
+                if (activeDiagramBtn) {
+                    showDiagram(activeDiagramBtn.dataset.diagram);
+                }
+            }
+        });
+    });
+    console.log('Display mode toggle listeners added');
 }
 
 async function handleFileUpload(e) {
@@ -310,7 +353,7 @@ function displayConfigurationDetails(config) {
 }
 
 function showDiagram(diagramType) {
-    console.log('Showing diagram:', diagramType);
+    console.log('Showing diagram:', diagramType, 'Mode:', currentDisplayMode);
     
     const diagramContainer = document.getElementById('diagramContainer');
     if (!diagramContainer) {
@@ -330,8 +373,49 @@ function showDiagram(diagramType) {
     
     const mermaidCode = currentDiagrams[diagramType];
     
-    // Show as text with copy button
-    showTextDiagram(diagramContainer, mermaidCode, diagramType);
+    if (currentDisplayMode === 'render') {
+        showRenderedDiagram(diagramContainer, mermaidCode, diagramType);
+    } else {
+        showTextDiagram(diagramContainer, mermaidCode, diagramType);
+    }
+}
+
+function showRenderedDiagram(container, mermaidCode, diagramType) {
+    const diagramId = `diagram-${Date.now()}`;
+    container.innerHTML = `
+        <div class="text-center">
+            <h5>${diagramType.charAt(0).toUpperCase() + diagramType.slice(1)} Diagram</h5>
+            <div class="alert alert-info">
+                <p><strong>Rendered Network Diagram</strong></p>
+                <p>This diagram shows the network topology in visual format.</p>
+                <div class="diagram-code-container">
+                    <div class="diagram-code-header">
+                        <span>Visual Diagram</span>
+                        <button class="copy-button" onclick="copyDiagramCode('${diagramId}')">📋 Copy Code</button>
+                    </div>
+                    <div id="${diagramId}" class="mermaid">
+                        ${mermaidCode}
+                    </div>
+                </div>
+                <p><small>💡 Tip: You can switch to "Mermaid Code" mode to see the underlying code.</small></p>
+            </div>
+        </div>
+    `;
+    
+    // Render the Mermaid diagram
+    if (mermaidInitialized) {
+        try {
+            mermaid.init(undefined, `#${diagramId}`);
+            console.log('Mermaid diagram rendered successfully');
+        } catch (error) {
+            console.error('Failed to render Mermaid diagram:', error);
+            // Fallback to text mode
+            showTextDiagram(container, mermaidCode, diagramType);
+        }
+    } else {
+        console.warn('Mermaid.js not available, falling back to text mode');
+        showTextDiagram(container, mermaidCode, diagramType);
+    }
 }
 
 function showTextDiagram(container, mermaidCode, diagramType) {
@@ -357,15 +441,37 @@ function showTextDiagram(container, mermaidCode, diagramType) {
 
 // Global function for copy button
 window.copyDiagramCode = async function(diagramId) {
-    const preElement = document.getElementById(diagramId);
-    const copyButton = preElement.previousElementSibling.querySelector('.copy-button');
+    let content = '';
+    const element = document.getElementById(diagramId);
     
-    if (!preElement) {
+    if (!element) {
         console.error('Diagram element not found');
         return;
     }
     
-    const success = await copyToClipboard(preElement.textContent);
+    // Get content based on display mode
+    if (currentDisplayMode === 'render') {
+        // For rendered diagrams, get the Mermaid code from the container
+        const mermaidContainer = element.closest('.diagram-code-container');
+        if (mermaidContainer) {
+            const mermaidElement = mermaidContainer.querySelector('.mermaid');
+            if (mermaidElement) {
+                content = mermaidElement.textContent || mermaidElement.innerText;
+            }
+        }
+    } else {
+        // For text mode, get the pre element content
+        content = element.textContent;
+    }
+    
+    if (!content) {
+        console.error('No content found to copy');
+        showAlert('No content found to copy', 'danger');
+        return;
+    }
+    
+    const copyButton = element.previousElementSibling.querySelector('.copy-button');
+    const success = await copyToClipboard(content);
     
     if (success) {
         // Visual feedback

@@ -145,6 +145,17 @@ body {
     border-color: #0d6efd;
 }
 
+.btn-outline-secondary {
+    color: #6c757d;
+    border-color: #6c757d;
+}
+
+.btn-outline-secondary:hover {
+    color: #fff;
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
 .btn-outline-danger {
     color: #dc3545;
     border-color: #dc3545;
@@ -177,6 +188,19 @@ body {
 .btn:disabled {
     opacity: 0.65;
     pointer-events: none;
+}
+
+/* Radio button styles */
+.btn-check {
+    position: absolute;
+    clip: rect(0, 0, 0, 0);
+    pointer-events: none;
+}
+
+.btn-check:checked + .btn-outline-secondary {
+    color: #fff;
+    background-color: #6c757d;
+    border-color: #6c757d;
 }
 
 /* Form styles */
@@ -388,6 +412,7 @@ body {
     overflow-y: auto;
     outline: 0;
     background-color: rgba(0, 0, 0, 0.5);
+    transition: opacity 0.15s linear;
 }
 
 .modal.show {
@@ -440,6 +465,25 @@ body {
 
 #diagramContainer .mermaid {
     text-align: center;
+    background-color: white;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+/* Mermaid.js diagram styling */
+.mermaid {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: white;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin: 1rem 0;
+    overflow-x: auto;
+}
+
+.mermaid svg {
+    max-width: 100%;
+    height: auto;
 }
 
 /* Configuration list styling */
@@ -511,11 +555,6 @@ body {
     .btn-group .btn {
         margin-bottom: 0.25rem;
     }
-}
-
-/* Mermaid diagram improvements */
-.mermaid {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 /* Custom scrollbar for diagram container */

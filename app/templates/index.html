@@ -7,6 +7,8 @@
     
     <!-- Custom CSS with built-in Bootstrap-like styles -->
     <link href="/static/css/style.css" rel="stylesheet">
+    <!-- Mermaid.js for real-time diagram rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
 </head>
 <body>
     <div class="container-fluid">
@@ -85,6 +87,17 @@
                             <button type="button" class="btn btn-outline-primary" data-diagram="interfaces">Interfaces</button>
                             <button type="button" class="btn btn-outline-primary" data-diagram="vlans">VLANs</button>
                             <button type="button" class="btn btn-outline-primary" data-diagram="routing">Routing</button>
+                        </div>
+
+                        <!-- Diagram Display Toggle -->
+                        <div class="mb-3">
+                            <div class="btn-group" role="group">
+                                <input type="radio" class="btn-check" name="displayMode" id="renderMode" value="render" checked>
+                                <label class="btn btn-outline-secondary" for="renderMode">🎨 Rendered Diagram</label>
+                                
+                                <input type="radio" class="btn-check" name="displayMode" id="codeMode" value="code">
+                                <label class="btn btn-outline-secondary" for="codeMode">📝 Mermaid Code</label>
+                            </div>
                         </div>
 
                         <!-- Diagram Container -->
