@@ -7,8 +7,6 @@
     
     <!-- Custom CSS with built-in Bootstrap-like styles -->
     <link href="/static/css/style.css" rel="stylesheet">
-    <!-- Mermaid.js for real-time diagram rendering -->
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
 </head>
 <body>
     <div class="container-fluid">
@@ -40,10 +38,16 @@
                                 <input type="file" class="form-control" id="configFile" accept=".conf,.txt" required>
                                 <div class="form-text">Supported formats: .conf, .txt</div>
                             </div>
-                            <button type="submit" class="btn btn-primary w-100" id="uploadBtn">
-                                <span class="spinner-border spinner-border-sm d-none" role="status"></span>
-                                Upload & Parse
-                            </button>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary" id="uploadBtn">
+                                    <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                    Upload & Parse
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" id="autoLoadBtn">
+                                    <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                    🚀 Auto-Load Sample Config
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -89,14 +93,14 @@
                             <button type="button" class="btn btn-outline-primary" data-diagram="routing">Routing</button>
                         </div>
 
-                        <!-- Diagram Display Toggle -->
+                        <!-- Format Selection Controls -->
                         <div class="mb-3">
                             <div class="btn-group" role="group">
-                                <input type="radio" class="btn-check" name="displayMode" id="renderMode" value="render" checked>
-                                <label class="btn btn-outline-secondary" for="renderMode">🎨 Rendered Diagram</label>
+                                <input type="radio" class="btn-check" name="diagramFormat" id="pngFormat" value="png" checked>
+                                <label class="btn btn-outline-secondary" for="pngFormat">🖼️ PNG Image</label>
                                 
-                                <input type="radio" class="btn-check" name="displayMode" id="codeMode" value="code">
-                                <label class="btn btn-outline-secondary" for="codeMode">📝 Mermaid Code</label>
+                                <input type="radio" class="btn-check" name="diagramFormat" id="svgFormat" value="svg">
+                                <label class="btn btn-outline-secondary" for="svgFormat">📐 SVG Vector</label>
                             </div>
                         </div>
 

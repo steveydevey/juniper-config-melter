@@ -112,33 +112,17 @@ mkdir -p app/{models,parsers,static/{css,js},templates} tests examples/sample_co
 - VLANs have both names and numeric IDs
 - Static routes follow pattern: `route <destination> next-hop <gateway>;`
 
-### Mermaid.js Generation Best Practices
-
-#### Diagram Type Strategy
-- **Topology diagrams**: Show physical connections, use `graph TD`
-- **Routing diagrams**: Show logical paths, use `graph LR` for horizontal layout
-- **VLAN diagrams**: Group by VLAN relationships
-- **Interface diagrams**: Group by interface type (GE, XE, etc.)
-- **Overview diagrams**: Include styling classes for visual appeal
-
-#### Node ID Sanitization
-```python
-def _sanitize_id(self, text: str) -> str:
-    # Remove special characters and replace with underscores
-    sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', text)
-    # Ensure it starts with a letter
-    if sanitized and not sanitized[0].isalpha():
-        sanitized = f"node_{sanitized}"
-    return sanitized if sanitized else "node"
-```
-
-#### Styling Classes for Visual Appeal
-```mermaid
-classDef device fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-classDef interface fill:#f3e5f5,stroke:#4a148c,stroke-width:1px
-classDef vlan fill:#e8f5e8,stroke:#1b5e20,stroke-width:1px
-classDef route fill:#fff3e0,stroke:#e65100,stroke-width:1px
-```
+### Diagram Generation with Diagrams Python Library
+- **Use the diagrams Python library** for all network diagram generation.
+- **Do not use Mermaid.js** for any new features or outputs.
+- **Generate diagrams as PNG or SVG** using diagrams' `Diagram` context and save to the appropriate output directory.
+- **Use appropriate icons** from `diagrams.generic.network` (e.g., Router, Switch, Firewall) for network elements.
+- **Cluster related nodes** using `Cluster` for logical/physical groupings (e.g., VLANs, device groups).
+- **Label nodes and edges** clearly for readability.
+- **Store generated diagrams** in `generated_diagrams/` or a configured output directory.
+- **Return diagrams as files** (PNG/SVG) from API endpoints for frontend display.
+- **Document diagram generation logic** with clear comments and docstrings.
+- **Test diagram output** visually and with automated tests where possible.
 
 ### Data Model Design Patterns
 
@@ -658,4 +642,220 @@ class SimpleModal {
 2. **Hard-coded assumptions**: Test with various configuration formats
 3. **Missing error handling**: Always provide fallbacks for missing data
 4. **Performance neglect**: Consider parsing efficiency for large files
-5. **Insufficient testing**: Test with real-world data, not just examples 
+5. **Insufficient testing**: Test with real-world data, not just examples
+
+## Phase 4 Lessons Learned - Diagrams Library Integration
+
+### Backend Integration Success
+- **Successfully replaced MermaidGenerator with DiagramsGenerator** in FastAPI backend
+- **API endpoints now return actual image files** (PNG/SVG) instead of Mermaid code
+- **FileResponse from FastAPI** properly serves diagram files with correct MIME types
+- **Query parameter support** for format selection (`?format=png` or `?format=svg`)
+- **Automatic file generation** on upload with unique config_id-based filenames
+
+### API Endpoint Patterns
+```python
+@app.get("/diagram/{config_id}")
+async def get_diagram(
+    config_id: str, 
+    diagram_type: str = "topology",
+    format: str = Query("png", description="Diagram format: png or svg")
+):
+    # Return FileResponse for actual image files
+    return FileResponse(
+        path=diagram_path,
+        media_type=f"image/{format}",
+        filename=f"{config_id}_{diagram_type}.{format}"
+    )
+```
+
+### DiagramsGenerator Implementation
+- **Multiple diagram types**: topology, interfaces, vlans, routing, overview
+- **Dual format generation**: Each diagram type generates both PNG and SVG
+- **Config-based filenames**: Use config_id to avoid conflicts
+- **Proper file organization**: Store in `generated_diagrams/` directory
+- **Return file paths**: API can serve files directly from storage
+
+### File Serving Best Practices
+- **Use FileResponse** for serving actual files from FastAPI
+- **Set correct MIME types**: `image/png` and `image/svg`
+- **Include filename in response**: Helps with downloads
+- **Validate file existence**: Check if files exist before serving
+- **Error handling**: Return 404 if diagram files not found
+
+### Testing Results
+- **Successfully generated** all 5 diagram types (topology, interfaces, vlans, routing, overview)
+- **Both PNG and SVG formats** working correctly
+- **File sizes**: PNG ~600KB, SVG ~67KB for topology diagram
+- **API response times**: Fast file serving with proper headers
+- **Content-Type headers**: Correctly set for both formats
+
+### Migration Complete
+- **Removed all Mermaid.js dependencies** from backend
+- **Updated imports** to use DiagramsGenerator
+- **Modified storage structure** to store file paths instead of Mermaid code
+- **Updated API responses** to serve actual image files
+- **Maintained backward compatibility** for existing endpoints
+
+## Phase 5 Lessons Learned - VLAN Diagram Enhancements & Layout Optimization
+
+### VLAN Diagram Complete Interface Visibility
+
+#### Problem Solved
+- **Before**: VLAN diagram only showed 8 VLAN-assigned interfaces + 1 untagged active interface
+- **After**: VLAN diagram now shows ALL 65 interfaces with complete VLAN assignment status
+- **File size increase**: PNG from ~143KB to ~673KB, confirming all interfaces included
+
+#### Implementation Strategy
+```python
+# Show ALL interfaces, not just VLAN-assigned ones
+all_vlan_interfaces = set()
+for interface in device.interfaces:
+    if interface.vlan_members and len(interface.vlan_members) > 0:
+        for vlan_name in interface.vlan_members:
+            all_vlan_interfaces.add(interface.name)
+
+# Include all interfaces not in named VLANs as untagged
+untagged_interfaces = []
+for interface in device.interfaces:
+    if interface.name not in all_vlan_interfaces:
+        untagged_interfaces.append(interface)
+```
+
+#### Color Coding Strategy
+- **Red (lightcoral)**: newlab VLANs for lab environments
+- **Orange (moccasin)**: oob VLANs for out-of-band management
+- **Blue (lightsteelblue)**: Untagged interfaces in default VLAN
+- **Black text**: Ensures readability on colored backgrounds
+
+### Layout Optimization Patterns
+
+#### Graph Attributes for Better Space Utilization
+```python
+def _get_optimized_graph_attr(self, diagram_type: str) -> dict:
+    """Get optimized graph attributes for different diagram types"""
+    base_attr = {
+        "rankdir": "LR",  # Left-to-right layout
+        "splines": "ortho",  # Orthogonal edges
+        "nodesep": "0.5",  # Reduce node separation
+        "ranksep": "0.3",  # Reduce rank separation
+        "fontsize": "10",  # Smaller font for more content
+        "fontname": "Arial"
+    }
+    
+    if diagram_type == "vlans":
+        base_attr.update({
+            "rankdir": "TB",  # Top-to-bottom for VLANs
+            "nodesep": "0.3",
+            "ranksep": "0.2"
+        })
+    elif diagram_type == "interfaces":
+        base_attr.update({
+            "rankdir": "LR",
+            "nodesep": "0.2",
+            "ranksep": "0.1"
+        })
+    
+    return base_attr
+```
+
+#### Staggered Layout Implementation
+- **Use `direction="LR"`** for horizontal layouts to save vertical space
+- **Cluster related elements** to group interfaces under VLANs
+- **Reduce node and rank separation** for denser layouts
+- **Use orthogonal edges** (`splines="ortho"`) for cleaner appearance
+
+### Interface Display Enhancements
+
+#### Complete Information Display
+```python
+# Show interface name, IP, and description
+iface_label = interface.name
+if interface.ip:
+    iface_label += f"\n{interface.ip}"
+if interface.description:
+    iface_label += f"\n{interface.description}"
+```
+
+#### VLAN Assignment Status
+- **VLAN-assigned interfaces**: Grouped under their respective VLAN nodes
+- **Untagged interfaces**: All interfaces not assigned to named VLANs
+- **Complete inventory**: No missing interfaces in VLAN view
+
+### Performance Considerations
+
+#### File Size Management
+- **PNG format**: Larger file sizes (~673KB for complete VLAN diagram) but better compatibility
+- **SVG format**: Smaller file sizes (~72KB) but may have rendering issues in some browsers
+- **Format selection**: Provide both options via API query parameters
+
+#### Layout Efficiency
+- **Horizontal layouts**: Better for wide diagrams with many interfaces
+- **Clustering**: Reduces visual complexity while maintaining information density
+- **Optimized spacing**: Balance between readability and space utilization
+
+### User Experience Improvements
+
+#### Auto-Load Sample Configuration
+```python
+@app.get("/sample-config")
+async def get_sample_config():
+    """Serve the sample configuration file for auto-loading"""
+    sample_path = "test-configs/ex3300-1.conf"
+    if os.path.exists(sample_path):
+        return FileResponse(
+            path=sample_path,
+            media_type="text/plain",
+            filename="ex3300-1.conf"
+        )
+    raise HTTPException(status_code=404, detail="Sample config not found")
+```
+
+#### Frontend Auto-Load Implementation
+```javascript
+async function loadSampleConfig() {
+    try {
+        const response = await fetch('/sample-config');
+        if (response.ok) {
+            const configText = await response.text();
+            const file = new File([configText], 'ex3300-1.conf', { type: 'text/plain' });
+            await uploadFile(file);
+        }
+    } catch (error) {
+        showAlert('Failed to load sample config', 'danger');
+    }
+}
+```
+
+### Testing and Validation
+
+#### Interface Count Verification
+- **Total interfaces**: 65 in sample configuration
+- **VLAN-assigned**: 8 interfaces (ge-0/0/19, ge-0/0/24-25, ge-0/0/31-35)
+- **Untagged**: 57 interfaces (all others)
+- **Complete coverage**: All interfaces visible in VLAN diagram
+
+#### File Size Validation
+- **Before improvement**: ~143KB PNG (9 interfaces shown)
+- **After improvement**: ~673KB PNG (65 interfaces shown)
+- **Size increase**: ~370% increase confirms complete interface inclusion
+
+### Best Practices for Diagram Generation
+
+#### Complete Data Representation
+- **Show all interfaces**: Don't filter out interfaces without specific criteria
+- **Clear categorization**: Group interfaces by VLAN assignment status
+- **Descriptive labels**: Include IP addresses and descriptions where available
+- **Color coding**: Use consistent colors for different VLAN types
+
+#### Layout Optimization
+- **Direction selection**: Use LR for wide diagrams, TB for tall diagrams
+- **Spacing optimization**: Reduce node and rank separation for dense layouts
+- **Clustering**: Group related elements to reduce visual complexity
+- **Edge styling**: Use orthogonal edges for cleaner appearance
+
+#### Performance Balancing
+- **File size vs completeness**: Accept larger files for complete information
+- **Format options**: Provide both PNG and SVG for different use cases
+- **Caching**: Generate diagrams once and serve from storage
+- **Error handling**: Graceful degradation when diagrams are too large 

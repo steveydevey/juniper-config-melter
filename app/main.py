@@ -1,5 +1,5 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi import Request
@@ -10,7 +10,7 @@ import logging
 from typing import Dict, Optional
 
 from app.parsers.juniper_parser import JuniperParser
-from app.parsers.mermaid_generator import MermaidGenerator
+from app.parsers.diagrams_generator import DiagramsGenerator
 from app.models.network import Network
 
 # Configure logging
@@ -21,7 +21,7 @@ app = FastAPI(title="Juniper Config Melter", version="1.0.0")
 
 # Initialize parsers
 parser = JuniperParser()
-generator = MermaidGenerator()
+generator = DiagramsGenerator()
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -71,7 +71,7 @@ async def upload_config(file: UploadFile = File(...)):
         
         # Generate diagrams
         logger.info("Generating diagrams...")
-        diagrams = generator.generate_all_diagrams(network)
+        diagrams = generator.generate_all_diagrams(network, config_id)
         logger.info(f"Diagrams generated: {list(diagrams.keys())}")
         
         # Store results
@@ -114,12 +114,20 @@ async def get_parsed_config(config_id: str):
     }
 
 @app.get("/diagram/{config_id}")
-async def get_diagram(config_id: str, diagram_type: str = "overview"):
+async def get_diagram(
+    config_id: str, 
+    diagram_type: str = "topology",
+    format: str = Query("png", description="Diagram format: png or svg")
+):
     """Get a specific diagram for a configuration"""
-    logger.info(f"Diagram request for config: {config_id}, type: {diagram_type}")
+    logger.info(f"Diagram request for config: {config_id}, type: {diagram_type}, format: {format}")
+    
     if config_id not in config_storage:
         logger.warning(f"Configuration not found: {config_id}")
         raise HTTPException(status_code=404, detail="Configuration not found")
+    
+    if format not in ["png", "svg"]:
+        raise HTTPException(status_code=400, detail="Format must be 'png' or 'svg'")
     
     config_data = config_storage[config_id]
     diagrams = config_data["diagrams"]
@@ -128,11 +136,18 @@ async def get_diagram(config_id: str, diagram_type: str = "overview"):
         logger.warning(f"Diagram type not available: {diagram_type}")
         raise HTTPException(status_code=400, detail=f"Diagram type '{diagram_type}' not available")
     
-    return {
-        "config_id": config_id,
-        "diagram_type": diagram_type,
-        "mermaid_code": diagrams[diagram_type]
-    }
+    # Get the diagram file path
+    diagram_path = diagrams[diagram_type].get(format)
+    if not diagram_path or not os.path.exists(diagram_path):
+        logger.warning(f"Diagram file not found: {diagram_path}")
+        raise HTTPException(status_code=404, detail="Diagram file not found")
+    
+    # Return the file
+    return FileResponse(
+        path=diagram_path,
+        media_type=f"image/{format}",
+        filename=f"{config_id}_{diagram_type}.{format}"
+    )
 
 @app.get("/diagrams/{config_id}")
 async def get_all_diagrams(config_id: str):
@@ -175,6 +190,19 @@ async def delete_config(config_id: str):
     del config_storage[config_id]
     logger.info(f"Configuration deleted: {config_id}")
     return {"message": "Configuration deleted successfully"}
+
+@app.get("/sample-config")
+async def get_sample_config():
+    """Serve the sample configuration file for auto-loading"""
+    sample_config_path = "test-configs/ex3300-1.conf"
+    if not os.path.exists(sample_config_path):
+        raise HTTPException(status_code=404, detail="Sample configuration file not found")
+    
+    return FileResponse(
+        path=sample_config_path,
+        media_type="text/plain",
+        filename="ex3300-1.conf"
+    )
 
 if __name__ == "__main__":
     import uvicorn

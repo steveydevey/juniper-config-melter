@@ -1,10 +1,9 @@
-// Juniper Config Melter - Frontend JavaScript (With Mermaid.js Integration)
+// Juniper Config Melter - Frontend JavaScript (Diagrams Library Integration)
 
 // Global variables
 let currentConfigId = null;
-let currentDiagrams = {};
-let currentDisplayMode = 'render'; // 'render' or 'code'
-let mermaidInitialized = false;
+let currentDiagramTypes = [];
+let currentDiagramFormat = 'png'; // 'png' or 'svg'
 let loadingModal = null;
 
 // Simple modal implementation
@@ -46,28 +45,6 @@ class SimpleModal {
     }
 }
 
-// Initialize Mermaid.js
-function initializeMermaid() {
-    if (typeof mermaid !== 'undefined' && !mermaidInitialized) {
-        try {
-            mermaid.initialize({
-                startOnLoad: false,
-                theme: 'default',
-                flowchart: {
-                    useMaxWidth: true,
-                    htmlLabels: true,
-                    curve: 'basis'
-                },
-                securityLevel: 'loose'
-            });
-            mermaidInitialized = true;
-            console.log('Mermaid.js initialized successfully');
-        } catch (error) {
-            console.warn('Failed to initialize Mermaid.js:', error);
-        }
-    }
-}
-
 // Copy to clipboard functionality
 async function copyToClipboard(text) {
     try {
@@ -102,9 +79,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeApp() {
-    // Initialize Mermaid.js
-    initializeMermaid();
-    
     // Initialize simple modal
     const modalElement = document.getElementById('loadingModal');
     if (modalElement) {
@@ -133,6 +107,15 @@ function setupEventListeners() {
         console.error('Upload form not found');
     }
     
+    // Auto-load sample config
+    const autoLoadBtn = document.getElementById('autoLoadBtn');
+    if (autoLoadBtn) {
+        autoLoadBtn.addEventListener('click', handleAutoLoad);
+        console.log('Auto-load button listener added');
+    } else {
+        console.error('Auto-load button not found');
+    }
+    
     // Diagram type selection
     const diagramControls = document.getElementById('diagramControls');
     if (diagramControls) {
@@ -147,13 +130,13 @@ function setupEventListeners() {
         console.error('Diagram controls not found');
     }
     
-    // Display mode toggle
-    const displayModeInputs = document.querySelectorAll('input[name="displayMode"]');
-    displayModeInputs.forEach(input => {
+    // Format selection toggle
+    const formatInputs = document.querySelectorAll('input[name="diagramFormat"]');
+    formatInputs.forEach(input => {
         input.addEventListener('change', function() {
-            currentDisplayMode = this.value;
-            if (currentConfigId && currentDiagrams) {
-                // Re-display current diagram with new mode
+            currentDiagramFormat = this.value;
+            if (currentConfigId && currentDiagramTypes.length > 0) {
+                // Re-display current diagram with new format
                 const activeDiagramBtn = document.querySelector('#diagramControls .btn.active');
                 if (activeDiagramBtn) {
                     showDiagram(activeDiagramBtn.dataset.diagram);
@@ -161,7 +144,7 @@ function setupEventListeners() {
             }
         });
     });
-    console.log('Display mode toggle listeners added');
+    console.log('Format selection listeners added');
 }
 
 async function handleFileUpload(e) {
@@ -199,46 +182,49 @@ async function handleFileUpload(e) {
     }
     
     try {
+        // Create FormData for file upload
         const formData = new FormData();
         formData.append('file', file);
         
-        console.log('Sending upload request...');
+        console.log('Uploading file to server...');
         const response = await fetch('/upload', {
             method: 'POST',
             body: formData
         });
         
-        console.log('Upload response status:', response.status);
-        
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Upload failed:', errorText);
-            let errorMessage = 'Upload failed';
-            try {
-                const error = JSON.parse(errorText);
-                errorMessage = error.detail || errorMessage;
-            } catch (e) {
-                errorMessage = errorText || errorMessage;
-            }
-            throw new Error(errorMessage);
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Upload failed');
         }
         
         const result = await response.json();
         console.log('Upload successful:', result);
         
+        // Store the config ID and diagram types
         currentConfigId = result.config_id;
-        
-        // Load diagrams
-        await loadDiagrams(result.config_id);
+        currentDiagramTypes = result.diagram_types || [];
         
         // Show success message
-        showAlert(`Configuration uploaded successfully! Found ${result.device_count} device(s), ${result.interface_count} interface(s), and ${result.vlan_count} VLAN(s).`, 'success');
+        showAlert(`Configuration uploaded successfully! Generated ${result.diagram_types?.length || 0} diagram types.`, 'success');
         
-        // Load configuration list
-        loadConfigurations();
+        // Load configuration details
+        await loadConfigurationDetails(currentConfigId);
         
-        // Show overview diagram by default
-        showDiagram('overview');
+        // Show the first available diagram
+        if (currentDiagramTypes.length > 0) {
+            showDiagram(currentDiagramTypes[0]);
+            // Update the active button
+            const firstBtn = document.querySelector(`[data-diagram="${currentDiagramTypes[0]}"]`);
+            if (firstBtn) {
+                updateActiveButton(firstBtn);
+            }
+        }
+        
+        // Refresh configuration list
+        await loadConfigurations();
+        
+        // Clear the file input
+        configFile.value = '';
         
     } catch (error) {
         console.error('Upload error:', error);
@@ -247,36 +233,14 @@ async function handleFileUpload(e) {
         // Hide loading state
         if (loadingModal) {
             loadingModal.hide();
+        } else {
+            // Reset button state
+            uploadBtn.innerHTML = 'Upload & Parse';
         }
         uploadBtn.disabled = false;
-        uploadBtn.innerHTML = '<span class="spinner-border spinner-border-sm d-none" role="status"></span>Upload & Parse';
         if (spinner) {
             spinner.classList.add('d-none');
         }
-        if (configFile) {
-            configFile.value = '';
-        }
-    }
-}
-
-async function loadDiagrams(configId) {
-    console.log('Loading diagrams for config:', configId);
-    try {
-        const response = await fetch(`/diagrams/${configId}`);
-        if (!response.ok) {
-            throw new Error('Failed to load diagrams');
-        }
-        
-        const result = await response.json();
-        currentDiagrams = result.diagrams;
-        console.log('Diagrams loaded:', Object.keys(currentDiagrams));
-        
-        // Load configuration details
-        await loadConfigurationDetails(configId);
-        
-    } catch (error) {
-        console.error('Error loading diagrams:', error);
-        showAlert('Failed to load diagrams', 'danger');
     }
 }
 
@@ -353,7 +317,7 @@ function displayConfigurationDetails(config) {
 }
 
 function showDiagram(diagramType) {
-    console.log('Showing diagram:', diagramType, 'Mode:', currentDisplayMode);
+    console.log('Showing diagram:', diagramType, 'Format:', currentDiagramFormat);
     
     const diagramContainer = document.getElementById('diagramContainer');
     if (!diagramContainer) {
@@ -361,7 +325,17 @@ function showDiagram(diagramType) {
         return;
     }
     
-    if (!currentDiagrams[diagramType]) {
+    if (!currentConfigId) {
+        diagramContainer.innerHTML = `
+            <div class="text-muted">
+                <span style="font-size: 2em;">⚠️</span>
+                <p>No configuration selected</p>
+            </div>
+        `;
+        return;
+    }
+    
+    if (!currentDiagramTypes.includes(diagramType)) {
         diagramContainer.innerHTML = `
             <div class="text-muted">
                 <span style="font-size: 2em;">⚠️</span>
@@ -371,122 +345,96 @@ function showDiagram(diagramType) {
         return;
     }
     
-    const mermaidCode = currentDiagrams[diagramType];
-    
-    if (currentDisplayMode === 'render') {
-        showRenderedDiagram(diagramContainer, mermaidCode, diagramType);
-    } else {
-        showTextDiagram(diagramContainer, mermaidCode, diagramType);
-    }
-}
-
-function showRenderedDiagram(container, mermaidCode, diagramType) {
-    const diagramId = `diagram-${Date.now()}`;
-    container.innerHTML = `
+    // Show loading state
+    diagramContainer.innerHTML = `
         <div class="text-center">
-            <h5>${diagramType.charAt(0).toUpperCase() + diagramType.slice(1)} Diagram</h5>
-            <div class="alert alert-info">
-                <p><strong>Rendered Network Diagram</strong></p>
-                <p>This diagram shows the network topology in visual format.</p>
-                <div class="diagram-code-container">
-                    <div class="diagram-code-header">
-                        <span>Visual Diagram</span>
-                        <button class="copy-button" onclick="copyDiagramCode('${diagramId}')">📋 Copy Code</button>
-                    </div>
-                    <div id="${diagramId}" class="mermaid">
-                        ${mermaidCode}
-                    </div>
-                </div>
-                <p><small>💡 Tip: You can switch to "Mermaid Code" mode to see the underlying code.</small></p>
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading diagram...</span>
             </div>
+            <p class="mt-2">Loading ${diagramType} diagram...</p>
         </div>
     `;
     
-    // Render the Mermaid diagram
-    if (mermaidInitialized) {
-        try {
-            mermaid.init(undefined, `#${diagramId}`);
-            console.log('Mermaid diagram rendered successfully');
-        } catch (error) {
-            console.error('Failed to render Mermaid diagram:', error);
-            // Fallback to text mode
-            showTextDiagram(container, mermaidCode, diagramType);
-        }
-    } else {
-        console.warn('Mermaid.js not available, falling back to text mode');
-        showTextDiagram(container, mermaidCode, diagramType);
-    }
+    // Load the diagram image
+    loadDiagramImage(diagramContainer, diagramType);
 }
 
-function showTextDiagram(container, mermaidCode, diagramType) {
-    const diagramId = `diagram-${Date.now()}`;
-    container.innerHTML = `
-        <div class="text-center">
-            <h5>${diagramType.charAt(0).toUpperCase() + diagramType.slice(1)} Diagram</h5>
-            <div class="alert alert-info">
-                <p><strong>Diagram Code (Mermaid.js format)</strong></p>
-                <p>This diagram can be rendered using Mermaid.js. Here's the code:</p>
-                <div class="diagram-code-container">
-                    <div class="diagram-code-header">
-                        <span>Mermaid.js Code</span>
-                        <button class="copy-button" onclick="copyDiagramCode('${diagramId}')">📋 Copy Code</button>
+async function loadDiagramImage(container, diagramType) {
+    try {
+        const imageUrl = `/diagram/${currentConfigId}?diagram_type=${diagramType}&format=${currentDiagramFormat}`;
+        console.log('Loading diagram from:', imageUrl);
+        
+        // Create image element
+        const img = new Image();
+        img.className = 'img-fluid';
+        img.style.maxWidth = '100%';
+        img.style.height = 'auto';
+        img.style.border = '1px solid #dee2e6';
+        img.style.borderRadius = '0.375rem';
+        
+        // Handle image load success
+        img.onload = function() {
+            container.innerHTML = `
+                <div class="text-center">
+                    <h5>${diagramType.charAt(0).toUpperCase() + diagramType.slice(1)} Diagram</h5>
+                    <div class="alert alert-info">
+                        <p><strong>Network Diagram (${currentDiagramFormat.toUpperCase()})</strong></p>
+                        <p>This diagram shows the network topology in visual format.</p>
+                        <div class="diagram-container">
+                            <img src="${imageUrl}" alt="${diagramType} diagram" class="img-fluid" style="max-width: 100%; height: auto; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+                        </div>
+                        <div class="mt-3">
+                            <a href="${imageUrl}" download="${currentConfigId}_${diagramType}.${currentDiagramFormat}" class="btn btn-primary">
+                                💾 Download ${currentDiagramFormat.toUpperCase()}
+                            </a>
+                            <button class="btn btn-secondary" onclick="copyImageUrl('${imageUrl}')">
+                                📋 Copy URL
+                            </button>
+                        </div>
+                        <p><small>💡 Tip: You can switch between PNG and SVG formats using the format controls above.</small></p>
                     </div>
-                    <pre id="${diagramId}">${mermaidCode}</pre>
                 </div>
-                <p><small>💡 Tip: You can copy this code and paste it into a Mermaid.js editor to visualize the diagram.</small></p>
+            `;
+        };
+        
+        // Handle image load error
+        img.onerror = function() {
+            container.innerHTML = `
+                <div class="text-center">
+                    <div class="text-muted">
+                        <span style="font-size: 2em;">⚠️</span>
+                        <p>Failed to load diagram</p>
+                        <p><small>The diagram file may not exist or there was an error loading it.</small></p>
+                    </div>
+                </div>
+            `;
+        };
+        
+        // Set the source to trigger loading
+        img.src = imageUrl;
+        
+    } catch (error) {
+        console.error('Error loading diagram:', error);
+        container.innerHTML = `
+            <div class="text-center">
+                <div class="text-muted">
+                    <span style="font-size: 2em;">⚠️</span>
+                    <p>Error loading diagram</p>
+                    <p><small>${error.message}</small></p>
+                </div>
             </div>
-        </div>
-    `;
+        `;
+    }
 }
 
-// Global function for copy button
-window.copyDiagramCode = async function(diagramId) {
-    let content = '';
-    const element = document.getElementById(diagramId);
-    
-    if (!element) {
-        console.error('Diagram element not found');
-        return;
-    }
-    
-    // Get content based on display mode
-    if (currentDisplayMode === 'render') {
-        // For rendered diagrams, get the Mermaid code from the container
-        const mermaidContainer = element.closest('.diagram-code-container');
-        if (mermaidContainer) {
-            const mermaidElement = mermaidContainer.querySelector('.mermaid');
-            if (mermaidElement) {
-                content = mermaidElement.textContent || mermaidElement.innerText;
-            }
-        }
-    } else {
-        // For text mode, get the pre element content
-        content = element.textContent;
-    }
-    
-    if (!content) {
-        console.error('No content found to copy');
-        showAlert('No content found to copy', 'danger');
-        return;
-    }
-    
-    const copyButton = element.previousElementSibling.querySelector('.copy-button');
-    const success = await copyToClipboard(content);
+// Global function for copying image URL
+window.copyImageUrl = async function(imageUrl) {
+    const success = await copyToClipboard(imageUrl);
     
     if (success) {
-        // Visual feedback
-        copyButton.textContent = '✅ Copied!';
-        copyButton.classList.add('copied');
-        
-        // Reset after 2 seconds
-        setTimeout(() => {
-            copyButton.textContent = '📋 Copy Code';
-            copyButton.classList.remove('copied');
-        }, 2000);
-        
-        showAlert('Diagram code copied to clipboard!', 'success');
+        showAlert('Image URL copied to clipboard!', 'success');
     } else {
-        showAlert('Failed to copy to clipboard', 'danger');
+        showAlert('Failed to copy URL to clipboard', 'danger');
     }
 };
 
@@ -548,26 +496,22 @@ function displayConfigurations(configs) {
     // Add click handlers for configuration selection
     configList.querySelectorAll('.config-list-item').forEach(item => {
         item.addEventListener('click', function(e) {
-            // Don't trigger if clicking on delete button
+            // Don't trigger if clicking delete button
             if (e.target.classList.contains('delete-config-btn')) {
                 return;
             }
             
             const configId = this.dataset.configId;
             loadConfiguration(configId);
-            
-            // Update active state
-            configList.querySelectorAll('.config-list-item').forEach(i => i.classList.remove('active'));
-            this.classList.add('active');
         });
     });
 }
 
-// Global function for delete button
+// Global function for deleting configurations
 window.deleteConfiguration = async function(configId, event) {
-    event.stopPropagation(); // Prevent triggering the config selection
+    event.stopPropagation(); // Prevent triggering config selection
     
-    if (!confirm('Are you sure you want to delete this configuration? This action cannot be undone.')) {
+    if (!confirm('Are you sure you want to delete this configuration?')) {
         return;
     }
     
@@ -579,10 +523,10 @@ window.deleteConfiguration = async function(configId, event) {
         if (response.ok) {
             showAlert('Configuration deleted successfully', 'success');
             
-            // If this was the currently selected config, clear the display
+            // If this was the current config, clear it
             if (currentConfigId === configId) {
                 currentConfigId = null;
-                currentDiagrams = {};
+                currentDiagramTypes = [];
                 const diagramContainer = document.getElementById('diagramContainer');
                 if (diagramContainer) {
                     diagramContainer.innerHTML = `
@@ -600,8 +544,8 @@ window.deleteConfiguration = async function(configId, event) {
                 }
             }
             
-            // Reload the configuration list
-            loadConfigurations();
+            // Refresh the configuration list
+            await loadConfigurations();
         } else {
             throw new Error('Failed to delete configuration');
         }
@@ -612,35 +556,154 @@ window.deleteConfiguration = async function(configId, event) {
 };
 
 async function loadConfiguration(configId) {
+    console.log('Loading configuration:', configId);
+    
+    // Update current config
     currentConfigId = configId;
-    await loadDiagrams(configId);
+    
+    // Load configuration details
+    await loadConfigurationDetails(configId);
+    
+    // Get available diagram types from the upload response
+    // For now, we'll assume all diagram types are available
+    currentDiagramTypes = ['overview', 'topology', 'interfaces', 'vlans', 'routing'];
+    
+    // Show the first diagram
     showDiagram('overview');
     
+    // Update the active button
     const overviewBtn = document.querySelector('[data-diagram="overview"]');
     if (overviewBtn) {
         updateActiveButton(overviewBtn);
     }
 }
 
-function showAlert(message, type) {
-    console.log('Showing alert:', type, message);
+async function handleAutoLoad(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    console.log('Auto-loading sample configuration...');
     
+    const autoLoadBtn = document.getElementById('autoLoadBtn');
+    if (!autoLoadBtn) {
+        console.error('Auto-load button not found');
+        showAlert('Error: Auto-load button not found', 'danger');
+        return;
+    }
+    
+    // Show loading state
+    if (loadingModal) {
+        loadingModal.show();
+    } else {
+        // Fallback loading indicator
+        autoLoadBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Loading Sample...';
+    }
+    autoLoadBtn.disabled = true;
+    const spinner = autoLoadBtn.querySelector('.spinner-border');
+    if (spinner) {
+        spinner.classList.remove('d-none');
+    }
+    
+    try {
+        // First, fetch the sample configuration file
+        console.log('Fetching sample configuration file...');
+        const configResponse = await fetch('/sample-config');
+        
+        if (!configResponse.ok) {
+            throw new Error('Failed to fetch sample configuration file');
+        }
+        
+        const configBlob = await configResponse.blob();
+        const configFile = new File([configBlob], 'ex3300-1.conf', { type: 'text/plain' });
+        
+        console.log('Sample config loaded, uploading to server...');
+        
+        // Create FormData and upload the sample config
+        const formData = new FormData();
+        formData.append('file', configFile);
+        
+        const uploadResponse = await fetch('/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!uploadResponse.ok) {
+            const errorData = await uploadResponse.json();
+            throw new Error(errorData.detail || 'Upload failed');
+        }
+        
+        const result = await uploadResponse.json();
+        console.log('Auto-load successful:', result);
+        
+        // Store the config ID and diagram types
+        currentConfigId = result.config_id;
+        currentDiagramTypes = result.diagram_types || [];
+        
+        // Show success message
+        showAlert(`Sample configuration loaded successfully! Generated ${result.diagram_types?.length || 0} diagram types.`, 'success');
+        
+        // Load configuration details and refresh the list
+        await loadConfigurationDetails(currentConfigId);
+        await loadConfigurations();
+        
+        // Show the overview diagram by default
+        if (currentDiagramTypes.includes('overview')) {
+            showDiagram('overview');
+            const overviewBtn = document.querySelector('#diagramControls [data-diagram="overview"]');
+            if (overviewBtn) {
+                updateActiveButton(overviewBtn);
+            }
+        }
+        
+    } catch (error) {
+        console.error('Auto-load failed:', error);
+        showAlert(`Auto-load failed: ${error.message}`, 'danger');
+    } finally {
+        // Reset button state
+        if (loadingModal) {
+            loadingModal.hide();
+        }
+        autoLoadBtn.disabled = false;
+        autoLoadBtn.innerHTML = '<span class="spinner-border spinner-border-sm d-none" role="status"></span>🚀 Auto-Load Sample Config';
+        const spinner = autoLoadBtn.querySelector('.spinner-border');
+        if (spinner) {
+            spinner.classList.add('d-none');
+        }
+    }
+}
+
+function showAlert(message, type) {
     // Create alert element
     const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible position-fixed`;
-    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.top = '20px';
+    alertDiv.style.right = '20px';
+    alertDiv.style.zIndex = '9999';
+    alertDiv.style.minWidth = '300px';
+    
     alertDiv.innerHTML = `
         ${message}
-        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
     
     // Add to page
     document.body.appendChild(alertDiv);
     
-    // Auto-remove after 5 seconds
+    // Auto-dismiss after 5 seconds
     setTimeout(() => {
         if (alertDiv.parentNode) {
-            alertDiv.remove();
+            alertDiv.parentNode.removeChild(alertDiv);
         }
     }, 5000);
+    
+    // Manual dismiss
+    const closeBtn = alertDiv.querySelector('.btn-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            if (alertDiv.parentNode) {
+                alertDiv.parentNode.removeChild(alertDiv);
+            }
+        });
+    }
 } 
