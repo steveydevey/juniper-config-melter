@@ -1,9 +1,11 @@
 # Juniper Config Melter - Development Plan
 
 ## Project Overview
+
 A Python application that parses Juniper Junos configuration files and translates them into network topology diagrams using the diagrams Python library. This tool helps network engineers visualize their network configurations and understand the relationships between different network components.
 
 ## Core Features
+
 1. **Juniper Config Parser**: Parse Junos configuration files (text format)
 2. **Network Component Extraction**: Identify interfaces, routing protocols, VLANs, security zones, etc.
 3. **Relationship Mapping**: Map connections between network devices and interfaces
@@ -15,11 +17,12 @@ A Python application that parses Juniper Junos configuration files and translate
 ## Technical Architecture
 
 ### 1. Backend (Python)
+
 - **Framework**: FastAPI for REST API
 - **Config Parser**: Custom parser using regex and state machines
 - **Data Models**: Pydantic models for structured data
 - **Diagram Generation**: diagrams Python library with Graphviz backend
-- **Dependencies**: 
+- **Dependencies**:
   - `fastapi` - Web framework
   - `uvicorn` - ASGI server
   - `pydantic` - Data validation
@@ -28,6 +31,7 @@ A Python application that parses Juniper Junos configuration files and translate
   - `jinja2` - Template engine (for HTML generation)
 
 ### 2. Frontend (HTML/JavaScript)
+
 - **Framework**: Vanilla JavaScript with custom CSS (no external dependencies)
 - **Diagram Display**: SVG rendering of diagrams library output
 - **File Upload**: Drag-and-drop interface for config files
@@ -36,13 +40,13 @@ A Python application that parses Juniper Junos configuration files and translate
 - **Interactive Diagrams**: Zoom, pan, and click interactions
 
 ### 3. Data Flow
-```
-Juniper Config File → Parser → Network Model → Diagrams Generator → SVG Output → Web Display
-```
+
+`Juniper Config File → Parser → Network Model → Diagrams Generator → SVG Output → Web Display`
 
 ## Implementation Plan
 
 ### Phase 1: Core Parser ✅ COMPLETED
+
 1. **Create project structure** ✅
    - Set up Python virtual environment
    - Initialize FastAPI application
@@ -61,6 +65,7 @@ Juniper Config File → Parser → Network Model → Diagrams Generator → SVG 
    - `Network` model (devices, connections, topology)
 
 ### Phase 2: Diagrams Library Generator 🔄 IN PROGRESS
+
 1. **Design diagram templates** 🔄
    - Network topology diagram layout using diagrams library
    - Device representation (routers, switches, firewalls) using OnPremises nodes
@@ -82,6 +87,7 @@ Juniper Config File → Parser → Network Model → Diagrams Generator → SVG 
    - Network overview
 
 ### Phase 3: Web Interface with Real-time Diagram Display 🔄 PLANNED
+
 1. **Build FastAPI endpoints** 🔄
    - `POST /upload` - Upload config file
    - `GET /parse/{config_id}` - Get parsed network data
@@ -109,6 +115,7 @@ Juniper Config File → Parser → Network Model → Diagrams Generator → SVG 
    - Loading states and error handling
 
 ### Phase 4: Advanced Features 🔄 PLANNED
+
 1. **Multi-device support**
    - Parse multiple config files
    - Build complete network topology
@@ -133,7 +140,8 @@ Juniper Config File → Parser → Network Model → Diagrams Generator → SVG 
    - Configuration validation indicators
 
 ## File Structure
-```
+
+```conf
 juniper-config-melter/
 ├── app/
 │   ├── __init__.py
@@ -169,6 +177,7 @@ juniper-config-melter/
 ## Key Components
 
 ### 1. Juniper Parser (`parsers/juniper_parser.py`) ✅
+
 ```python
 class JuniperParser:
     def parse_config(self, config_text: str) -> NetworkModel
@@ -178,6 +187,7 @@ class JuniperParser:
 ```
 
 ### 2. Diagrams Generator (`parsers/diagrams_generator.py`) 🔄
+
 ```python
 class DiagramsGenerator:
     def generate_topology(self, network: NetworkModel) -> str
@@ -189,6 +199,7 @@ class DiagramsGenerator:
 ```
 
 ### 3. Web Interface (`templates/index.html`) 🔄
+
 - File upload with drag-and-drop
 - SVG diagram display with zoom/pan controls
 - Interactive controls for diagram type selection
@@ -197,6 +208,7 @@ class DiagramsGenerator:
 - Real-time diagram updates
 
 ### 4. User Experience Features 🔄
+
 - Interactive SVG diagrams with click interactions
 - Zoom and pan controls for detailed examination
 - Copy-to-clipboard functionality for diagram code
@@ -208,6 +220,7 @@ class DiagramsGenerator:
 ## Diagrams Library Integration
 
 ### Advantages over Mermaid.js
+
 1. **Better Visual Quality**: Professional-looking diagrams with proper styling
 2. **More Control**: Fine-grained control over node placement and styling
 3. **Network-Specific Icons**: Built-in icons for routers, switches, firewalls
@@ -216,6 +229,7 @@ class DiagramsGenerator:
 6. **Python Native**: Direct integration with Python backend
 
 ### Diagram Types with Diagrams Library
+
 ```python
 from diagrams import Diagram, Cluster
 from diagrams.onprem.network import Router, Switch, Firewall
@@ -232,14 +246,17 @@ with Diagram("Network Topology", show=False):
 ```
 
 ### Web Interface Integration
+
 - **SVG Rendering**: Display diagrams as interactive SVG in web browser
 - **Real-time Updates**: Generate new diagrams on-the-fly
 - **Interactive Elements**: Click on devices to show details
 - **Export Functionality**: Download diagrams as high-resolution images
 
 ## Sample Juniper Config Parsing
+
 The parser successfully handles configurations like:
-```
+
+```conf
 interfaces {
     ge-0/0/0 {
         unit 0 {
@@ -259,6 +276,7 @@ interfaces {
 ```
 
 ## Success Metrics 🔄 TARGETED
+
 1. **Accuracy**: Successfully parse 95%+ of common Juniper config elements 🔄
 2. **Performance**: Parse 1MB config file in <5 seconds 🔄
 3. **Usability**: Generate clear, professional network diagrams 🔄
@@ -267,12 +285,14 @@ interfaces {
 6. **Visual Quality**: Professional-grade diagram output 🔄
 
 ## Current Status
+
 - ✅ **Phase 1**: Core Parser - COMPLETED
 - 🔄 **Phase 2**: Diagrams Library Generator - IN PROGRESS
 - 🔄 **Phase 3**: Web Interface with Real-time Diagram Display - PLANNED
 - 🔄 **Phase 4**: Advanced Features - PLANNED
 
 ## Next Steps (Phase 2 - Diagrams Library)
+
 1. **Install diagrams library** - Add to requirements.txt and install dependencies
 2. **Create diagrams generator** - Replace MermaidGenerator with DiagramsGenerator
 3. **Implement diagram types** - Convert existing Mermaid diagrams to diagrams library format
@@ -280,9 +300,10 @@ interfaces {
 5. **Update web interface** - Modify to display SVG diagrams instead of Mermaid code
 
 ## Future Enhancements
+
 1. **Multi-vendor support**: netgear, ubiquiti, cisco
 2. **Configuration validation**: Check for common misconfigurations
 3. **Network simulation**: Basic traffic flow analysis
 4. **Integration**: REST API for external tools
 5. **Collaboration**: Multi-user editing and sharing
-6. **Advanced visualizations**: 3D network diagrams, traffic flow animations 
+6. **Advanced visualizations**: 3D network diagrams, traffic flow animations
