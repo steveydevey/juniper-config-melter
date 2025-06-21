@@ -63,6 +63,63 @@
 - Ask for user preferences when multiple approaches are viable
 - Summarize completed work and next steps clearly
 
+## Markdown Documentation Best Practices
+
+### Document Structure and Formatting
+- **Add blank lines** after section headers for better readability
+- **Use proper code block syntax** with language identifiers (e.g., ````conf` for configuration files, ````python` for Python code)
+- **Consistent spacing** around lists and code blocks
+- **Proper indentation** in code blocks and file structures
+- **End files with newline** to ensure proper git diff formatting
+
+### Section Header Formatting
+```markdown
+## Section Name
+
+Content starts here with proper spacing.
+
+### Subsection Name
+
+Subsection content with consistent formatting.
+```
+
+### Code Block Standards
+- **Configuration files**: Use ````conf` for Juniper configs, shell scripts, etc.
+- **Python code**: Use ````python` for all Python code examples
+- **File structures**: Use ````conf` for directory tree structures
+- **Shell commands**: Use ````bash` for command-line examples
+- **Inline code**: Use single backticks for file names, commands, and short code snippets
+
+### List and Content Formatting
+- **Add blank lines** before and after lists for better readability
+- **Consistent bullet points** using `-` for unordered lists
+- **Proper spacing** around numbered lists and sub-lists
+- **Clear hierarchy** with proper heading levels (##, ###, ####)
+
+### File Structure Examples
+```conf
+project-name/
+├── app/
+│   ├── __init__.py
+│   ├── main.py
+│   └── models/
+│       └── network.py
+├── tests/
+│   └── test_parser.py
+└── requirements.txt
+```
+
+### Status Indicators
+- **Use consistent emojis** for status tracking: ✅ COMPLETED, 🔄 IN PROGRESS, ⏳ PLANNED
+- **Clear status descriptions** after emoji indicators
+- **Update status** as work progresses through phases
+
+### Content Organization
+- **Logical flow** from overview to implementation details
+- **Consistent section ordering** across documentation files
+- **Clear separation** between different types of content (overview, technical details, examples)
+- **Proper linking** between related sections when appropriate
+
 ## Key Commands Reference
 
 ```bash
