@@ -145,6 +145,28 @@ function setupEventListeners() {
         });
     });
     console.log('Format selection listeners added');
+    
+    // Style selection toggle
+    const styleInputs = document.querySelectorAll('input[name="diagramStyle"]');
+    styleInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            // Show the style change button when style is changed
+            const styleChangeSection = document.getElementById('styleChangeSection');
+            if (styleChangeSection) {
+                styleChangeSection.style.display = 'block';
+            }
+        });
+    });
+    console.log('Style selection listeners added');
+    
+    // Style change button
+    const changeStyleBtn = document.getElementById('changeStyleBtn');
+    if (changeStyleBtn) {
+        changeStyleBtn.addEventListener('click', handleStyleChange);
+        console.log('Style change button listener added');
+    } else {
+        console.error('Style change button not found');
+    }
 }
 
 async function handleFileUpload(e) {
@@ -566,7 +588,7 @@ async function loadConfiguration(configId) {
     
     // Get available diagram types from the upload response
     // For now, we'll assume all diagram types are available
-    currentDiagramTypes = ['overview', 'topology', 'interfaces', 'vlans', 'routing'];
+    currentDiagramTypes = ['overview', 'topology', 'interfaces', 'vlans', 'untagged_ports', 'routing'];
     
     // Show the first diagram
     showDiagram('overview');
@@ -667,6 +689,93 @@ async function handleAutoLoad(event) {
         autoLoadBtn.disabled = false;
         autoLoadBtn.innerHTML = '<span class="spinner-border spinner-border-sm d-none" role="status"></span>🚀 Auto-Load Sample Config';
         const spinner = autoLoadBtn.querySelector('.spinner-border');
+        if (spinner) {
+            spinner.classList.add('d-none');
+        }
+    }
+}
+
+async function handleStyleChange() {
+    console.log('Style change requested');
+    
+    if (!currentConfigId) {
+        showAlert('No configuration loaded. Please upload a configuration first.', 'warning');
+        return;
+    }
+    
+    const changeStyleBtn = document.getElementById('changeStyleBtn');
+    if (!changeStyleBtn) {
+        console.error('Style change button not found');
+        return;
+    }
+    
+    // Get the selected style
+    const selectedStyle = document.querySelector('input[name="diagramStyle"]:checked');
+    if (!selectedStyle) {
+        showAlert('Please select a diagram style.', 'warning');
+        return;
+    }
+    
+    const useMindmapStyle = selectedStyle.value === 'mindmap';
+    console.log('Selected style:', selectedStyle.value, 'Use mind-map:', useMindmapStyle);
+    
+    // Show loading state
+    if (loadingModal) {
+        loadingModal.show();
+    } else {
+        // Fallback loading indicator
+        changeStyleBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Regenerating...';
+    }
+    changeStyleBtn.disabled = true;
+    const spinner = changeStyleBtn.querySelector('.spinner-border');
+    if (spinner) {
+        spinner.classList.remove('d-none');
+    }
+    
+    try {
+        // Call the regenerate endpoint
+        const response = await fetch(`/regenerate-diagrams/${currentConfigId}?use_mindmap_style=${useMindmapStyle}`, {
+            method: 'POST'
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Style regeneration failed');
+        }
+        
+        const result = await response.json();
+        console.log('Style regeneration successful:', result);
+        
+        // Update current diagram types
+        currentDiagramTypes = result.diagram_types || [];
+        
+        // Show success message
+        const styleName = useMindmapStyle ? 'mind-map' : 'hierarchical';
+        showAlert(`Diagrams regenerated successfully with ${styleName} style!`, 'success');
+        
+        // Re-display current diagram with new style
+        const activeDiagramBtn = document.querySelector('#diagramControls .btn.active');
+        if (activeDiagramBtn) {
+            showDiagram(activeDiagramBtn.dataset.diagram);
+        }
+        
+        // Hide the style change section
+        const styleChangeSection = document.getElementById('styleChangeSection');
+        if (styleChangeSection) {
+            styleChangeSection.style.display = 'none';
+        }
+        
+    } catch (error) {
+        console.error('Style change error:', error);
+        showAlert(`Style change failed: ${error.message}`, 'danger');
+    } finally {
+        // Reset button state
+        if (loadingModal) {
+            loadingModal.hide();
+        }
+        changeStyleBtn.disabled = false;
+        changeStyleBtn.innerHTML = '<span class="spinner-border spinner-border-sm d-none" role="status"></span>🔄 Regenerate with New Style';
+        const spinner = changeStyleBtn.querySelector('.spinner-border');
         if (spinner) {
             spinner.classList.add('d-none');
         }

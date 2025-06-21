@@ -9,14 +9,53 @@ import os
 from app.models.network import Network, Device, Interface
 
 class DiagramsGenerator:
-    def __init__(self, output_dir: Optional[str] = None):
+    def __init__(self, output_dir: Optional[str] = None, use_mindmap_style: bool = True):
         self.output_dir = output_dir or "generated_diagrams"
+        self.use_mindmap_style = use_mindmap_style
         os.makedirs(self.output_dir, exist_ok=True)
+
+    def _get_mindmap_graph_attr(self, diagram_type: str = "general") -> Dict[str, str]:
+        """
+        Get graph attributes optimized for mind-map style layouts.
+        Uses radial layout with curved edges for a more organic, mind-map appearance.
+        """
+        base_attrs = {
+            "fontsize": "10",
+            "nodesep": "0.8",      # More spacing for radial layout
+            "ranksep": "1.2",      # More rank separation for mind-map
+            "splines": "curved",   # Curved edges for organic look
+            "concentrate": "false", # Don't merge edges for mind-map clarity
+            "overlap": "false",    # Prevent node overlap
+            "sep": "0.5",          # Edge separation
+            "K": "1.5",            # Spring constant for layout
+            "maxiter": "1000",     # More iterations for better layout
+            "start": "random"      # Random start for better distribution
+        }
+        
+        if diagram_type == "interfaces":
+            return {
+                **base_attrs,
+                "nodesep": "1.0",  # More spacing for interface diagrams
+                "ranksep": "1.5"
+            }
+        elif diagram_type == "vlans":
+            return {
+                **base_attrs,
+                "nodesep": "0.6",  # Tighter spacing for VLAN grouping
+                "ranksep": "1.0"
+            }
+        else:
+            return base_attrs
 
     def _get_optimized_graph_attr(self, diagram_type: str = "general") -> Dict[str, str]:
         """
         Get optimized graph attributes for different diagram types.
+        Now supports both traditional hierarchical and mind-map styles.
         """
+        if self.use_mindmap_style:
+            return self._get_mindmap_graph_attr(diagram_type)
+        
+        # Original hierarchical layout attributes
         base_attrs = {
             "fontsize": "10",      # Smaller font for more content
             "nodesep": "0.3",      # Tighter node spacing
@@ -45,6 +84,23 @@ class DiagramsGenerator:
             # General purpose attributes
             return base_attrs
 
+    def _get_diagram_direction(self, diagram_type: str = "general") -> str:
+        """
+        Get the appropriate direction for the diagram based on style preference.
+        For mind-map style, we use 'TB' (top-to-bottom) as the base direction
+        and let the radial layout handle the positioning.
+        """
+        if self.use_mindmap_style:
+            return "TB"  # Base direction for mind-map, actual layout is radial
+        
+        # Original directional logic
+        if diagram_type == "interfaces":
+            return "LR"  # Left to Right for interface diagrams
+        elif diagram_type == "vlans":
+            return "LR"  # Left to Right for VLAN diagrams
+        else:
+            return "TB"  # Top to Bottom for general diagrams
+
     def generate_topology(self, network: Network, config_id: str) -> Dict[str, str]:
         """
         Generate a network topology diagram from the Network model.
@@ -57,7 +113,7 @@ class DiagramsGenerator:
         graph_attr = self._get_optimized_graph_attr("general")
         
         with Diagram("Network Topology", show=False, filename=os.path.join(self.output_dir, filename), 
-                     outformat="png", direction="TB", graph_attr=graph_attr):
+                     outformat="png", direction=self._get_diagram_direction("general"), graph_attr=graph_attr):
             # Create device nodes
             device_nodes = {}
             for device in network.devices:
@@ -77,7 +133,7 @@ class DiagramsGenerator:
         
         # Generate SVG version
         with Diagram("Network Topology", show=False, filename=os.path.join(self.output_dir, filename), 
-                     outformat="svg", direction="TB", graph_attr=graph_attr):
+                     outformat="svg", direction=self._get_diagram_direction("general"), graph_attr=graph_attr):
             # Create device nodes
             device_nodes = {}
             for device in network.devices:
@@ -110,7 +166,7 @@ class DiagramsGenerator:
         graph_attr = self._get_optimized_graph_attr("interfaces")
         
         with Diagram("Interface Diagram", show=False, filename=os.path.join(self.output_dir, filename), 
-                     outformat="png", direction="LR", graph_attr=graph_attr):
+                     outformat="png", direction=self._get_diagram_direction("interfaces"), graph_attr=graph_attr):
             for device in network.devices:
                 with Cluster(f"Device: {device.hostname}"):
                     # Group interfaces by type first
@@ -137,7 +193,7 @@ class DiagramsGenerator:
         
         # Generate SVG version
         with Diagram("Interface Diagram", show=False, filename=os.path.join(self.output_dir, filename), 
-                     outformat="svg", direction="LR", graph_attr=graph_attr):
+                     outformat="svg", direction=self._get_diagram_direction("interfaces"), graph_attr=graph_attr):
             for device in network.devices:
                 with Cluster(f"Device: {device.hostname}"):
                     interface_groups = {}
@@ -181,171 +237,103 @@ class DiagramsGenerator:
     def generate_vlan_diagram(self, network: Network, config_id: str) -> Dict[str, str]:
         """
         Generate a VLAN-focused diagram showing VLAN relationships.
-        Uses horizontal layout for better space utilization.
-        Shows ALL interfaces with their VLAN assignment status.
+        Now uses a radial (mind-map) layout for better visualization.
+        Only shows interfaces assigned to VLANs (no untagged ports).
         """
         filename = f"{config_id}_vlans"
         png_path = os.path.join(self.output_dir, f"{filename}.png")
         svg_path = os.path.join(self.output_dir, f"{filename}.svg")
-        
-        graph_attr = self._get_optimized_graph_attr("vlans")
-        
-        with Diagram("VLAN Diagram", show=False, filename=os.path.join(self.output_dir, filename), 
-                     outformat="png", direction="LR", graph_attr=graph_attr):
-            for device in network.devices:
-                with Cluster(f"Device: {device.hostname}"):
-                    # Collect all interfaces and their VLAN assignments
-                    vlan_assignments = {}
-                    all_vlan_interfaces = set()  # Track all interfaces that are part of named VLANs
-                    
-                    # Initialize VLAN assignments
-                    if device.routing and "vlans" in device.routing:
-                        for vlan in device.routing["vlans"]:
-                            vlan_assignments[vlan.name] = []
-                    
-                    # Process each interface
-                    for interface in device.interfaces:
-                        if interface.vlan_members and len(interface.vlan_members) > 0:
-                            # Interface is tagged to specific VLAN(s)
-                            for vlan_name in interface.vlan_members:
-                                if vlan_name in vlan_assignments:
-                                    vlan_assignments[vlan_name].append(interface)
-                                    all_vlan_interfaces.add(interface.name)
-                    
-                    # Create VLAN nodes with their interfaces grouped under each VLAN
-                    for vlan_name, interfaces in vlan_assignments.items():
-                        # Find VLAN details
-                        vlan_details = None
+
+        # Force mind-map style for VLAN diagram
+        graph_attr = self._get_mindmap_graph_attr("vlans")
+        direction = "TB"  # Radial layout uses TB as base
+
+        for outformat in ["png", "svg"]:
+            with Diagram(
+                "VLAN Diagram", show=False,
+                filename=os.path.join(self.output_dir, filename),
+                outformat=outformat, direction=direction, graph_attr=graph_attr
+            ):
+                for device in network.devices:
+                    with Cluster(f"Device: {device.hostname}"):
+                        vlan_assignments = {}
+                        all_vlan_interfaces = set()
                         if device.routing and "vlans" in device.routing:
                             for vlan in device.routing["vlans"]:
-                                if vlan.name == vlan_name:
-                                    vlan_details = vlan
-                                    break
-                        
-                        if vlan_details:
-                            vlan_label = f"VLAN {vlan_details.vlan_id}\n{vlan_details.name}"
-                            if vlan_details.description:
-                                vlan_label += f"\n{vlan_details.description}"
-                        else:
-                            vlan_label = f"VLAN {vlan_name}"
-                        
-                        # Color code VLANs with lighter colors
-                        if "newlab" in vlan_name.lower():
-                            vlan_node = Switch(vlan_label, style="filled", fillcolor="lightcoral", fontcolor="black")
-                        elif "oob" in vlan_name.lower():
-                            vlan_node = Switch(vlan_label, style="filled", fillcolor="moccasin", fontcolor="black")
-                        else:
-                            vlan_node = Switch(vlan_label)
-                        
-                        # Group interfaces under their VLAN without arbitrary subgroups
-                        if interfaces:
-                            with Cluster(f"{vlan_name} Interfaces"):
-                                for interface in interfaces:
+                                vlan_assignments[vlan.name] = []
+                        for interface in device.interfaces:
+                            if interface.vlan_members and len(interface.vlan_members) > 0:
+                                for vlan_name in interface.vlan_members:
+                                    if vlan_name in vlan_assignments:
+                                        vlan_assignments[vlan_name].append(interface)
+                                        all_vlan_interfaces.add(interface.name)
+                        for vlan_name, interfaces in vlan_assignments.items():
+                            vlan_details = None
+                            if device.routing and "vlans" in device.routing:
+                                for vlan in device.routing["vlans"]:
+                                    if vlan.name == vlan_name:
+                                        vlan_details = vlan
+                                        break
+                            if vlan_details:
+                                vlan_label = f"VLAN {vlan_details.vlan_id}\n{vlan_details.name}"
+                                if vlan_details.description:
+                                    vlan_label += f"\n{vlan_details.description}"
+                            else:
+                                vlan_label = f"VLAN {vlan_name}"
+                            if "newlab" in vlan_name.lower():
+                                vlan_node = Switch(vlan_label, style="filled", fillcolor="lightcoral", fontcolor="black")
+                            elif "oob" in vlan_name.lower():
+                                vlan_node = Switch(vlan_label, style="filled", fillcolor="moccasin", fontcolor="black")
+                            else:
+                                vlan_node = Switch(vlan_label)
+                            if interfaces:
+                                with Cluster(f"{vlan_name} Interfaces"):
+                                    for interface in interfaces:
+                                        iface_label = interface.name
+                                        if interface.ip:
+                                            iface_label += f"\n{interface.ip}"
+                                        if interface.description:
+                                            iface_label += f"\n{interface.description}"
+                                        interface_node = Switch(iface_label)
+                                        vlan_node >> interface_node
+        return {"png": png_path, "svg": svg_path}
+
+    def generate_untagged_ports_diagram(self, network: Network, config_id: str) -> Dict[str, str]:
+        """
+        Generate a diagram showing only untagged interfaces (not assigned to any VLAN) for each device.
+        """
+        filename = f"{config_id}_untagged_ports"
+        png_path = os.path.join(self.output_dir, f"{filename}.png")
+        svg_path = os.path.join(self.output_dir, f"{filename}.svg")
+        graph_attr = self._get_optimized_graph_attr("interfaces")
+        direction = self._get_diagram_direction("interfaces")
+        for outformat in ["png", "svg"]:
+            with Diagram(
+                "Untagged Ports", show=False,
+                filename=os.path.join(self.output_dir, filename),
+                outformat=outformat, direction=direction, graph_attr=graph_attr
+            ):
+                for device in network.devices:
+                    with Cluster(f"Device: {device.hostname}"):
+                        all_vlan_interfaces = set()
+                        if device.routing and "vlans" in device.routing:
+                            for vlan in device.routing["vlans"]:
+                                if hasattr(vlan, 'interfaces') and vlan.interfaces:
+                                    all_vlan_interfaces.update(vlan.interfaces)
+                        untagged_interfaces = []
+                        for interface in device.interfaces:
+                            if interface.name not in all_vlan_interfaces:
+                                untagged_interfaces.append(interface)
+                        if untagged_interfaces:
+                            with Cluster("Untagged Ports"):
+                                for interface in untagged_interfaces:
                                     iface_label = interface.name
                                     if interface.ip:
                                         iface_label += f"\n{interface.ip}"
                                     if interface.description:
                                         iface_label += f"\n{interface.description}"
-                                    interface_node = Switch(iface_label)
-                                    vlan_node >> interface_node
-                    
-                    # Add untagged interfaces as a separate category (all interfaces not in named VLANs)
-                    untagged_interfaces = []
-                    for interface in device.interfaces:
-                        # Show interface if it's not part of any named VLAN
-                        if interface.name not in all_vlan_interfaces:
-                            untagged_interfaces.append(interface)
-                    
-                    if untagged_interfaces:
-                        with Cluster("Untagged Ports (Default VLAN)"):
-                            untagged_node = Switch("Default VLAN\n(Untagged)", style="filled", fillcolor="lightsteelblue", fontcolor="black")
-                            
-                            for interface in untagged_interfaces:
-                                iface_label = interface.name
-                                if interface.ip:
-                                    iface_label += f"\n{interface.ip}"
-                                if interface.description:
-                                    iface_label += f"\n{interface.description}"
-                                interface_node = Switch(iface_label)
-                                untagged_node >> interface_node
-        
-        # Generate SVG version
-        with Diagram("VLAN Diagram", show=False, filename=os.path.join(self.output_dir, filename), 
-                     outformat="svg", direction="LR", graph_attr=graph_attr):
-            for device in network.devices:
-                with Cluster(f"Device: {device.hostname}"):
-                    vlan_assignments = {}
-                    all_vlan_interfaces = set()
-                    
-                    if device.routing and "vlans" in device.routing:
-                        for vlan in device.routing["vlans"]:
-                            vlan_assignments[vlan.name] = []
-                    
-                    for interface in device.interfaces:
-                        if interface.vlan_members and len(interface.vlan_members) > 0:
-                            for vlan_name in interface.vlan_members:
-                                if vlan_name in vlan_assignments:
-                                    vlan_assignments[vlan_name].append(interface)
-                                    all_vlan_interfaces.add(interface.name)
-                    
-                    for vlan_name, interfaces in vlan_assignments.items():
-                        vlan_details = None
-                        if device.routing and "vlans" in device.routing:
-                            for vlan in device.routing["vlans"]:
-                                if vlan.name == vlan_name:
-                                    vlan_details = vlan
-                                    break
-                        
-                        if vlan_details:
-                            vlan_label = f"VLAN {vlan_details.vlan_id}\n{vlan_details.name}"
-                            if vlan_details.description:
-                                vlan_label += f"\n{vlan_details.description}"
-                        else:
-                            vlan_label = f"VLAN {vlan_name}"
-                        
-                        # Color code VLANs with lighter colors
-                        if "newlab" in vlan_name.lower():
-                            vlan_node = Switch(vlan_label, style="filled", fillcolor="lightcoral", fontcolor="black")
-                        elif "oob" in vlan_name.lower():
-                            vlan_node = Switch(vlan_label, style="filled", fillcolor="moccasin", fontcolor="black")
-                        else:
-                            vlan_node = Switch(vlan_label)
-                        
-                        # Group interfaces under their VLAN without arbitrary subgroups
-                        if interfaces:
-                            with Cluster(f"{vlan_name} Interfaces"):
-                                for interface in interfaces:
-                                    iface_label = interface.name
-                                    if interface.ip:
-                                        iface_label += f"\n{interface.ip}"
-                                    if interface.description:
-                                        iface_label += f"\n{interface.description}"
-                                    interface_node = Switch(iface_label)
-                                    vlan_node >> interface_node
-                    
-                    # Add untagged interfaces as a separate category (all interfaces not in named VLANs)
-                    untagged_interfaces = []
-                    for interface in device.interfaces:
-                        if interface.name not in all_vlan_interfaces:
-                            untagged_interfaces.append(interface)
-                    
-                    if untagged_interfaces:
-                        with Cluster("Untagged Ports (Default VLAN)"):
-                            untagged_node = Switch("Default VLAN\n(Untagged)", style="filled", fillcolor="lightsteelblue", fontcolor="black")
-                            
-                            for interface in untagged_interfaces:
-                                iface_label = interface.name
-                                if interface.ip:
-                                    iface_label += f"\n{interface.ip}"
-                                if interface.description:
-                                    iface_label += f"\n{interface.description}"
-                                interface_node = Switch(iface_label)
-                                untagged_node >> interface_node
-        
-        return {
-            "png": png_path,
-            "svg": svg_path
-        }
+                                    Switch(iface_label)
+        return {"png": png_path, "svg": svg_path}
 
     def generate_routing_diagram(self, network: Network, config_id: str) -> Dict[str, str]:
         """
@@ -358,7 +346,7 @@ class DiagramsGenerator:
         graph_attr = self._get_optimized_graph_attr("general")
         
         with Diagram("Routing Diagram", show=False, filename=os.path.join(self.output_dir, filename), 
-                     outformat="png", direction="TB", graph_attr=graph_attr):
+                     outformat="png", direction=self._get_diagram_direction("general"), graph_attr=graph_attr):
             for device in network.devices:
                 with Cluster(f"Device: {device.hostname}"):
                     device_node = Router(device.hostname)
@@ -372,7 +360,7 @@ class DiagramsGenerator:
         
         # Generate SVG version
         with Diagram("Routing Diagram", show=False, filename=os.path.join(self.output_dir, filename), 
-                     outformat="svg", direction="TB", graph_attr=graph_attr):
+                     outformat="svg", direction=self._get_diagram_direction("general"), graph_attr=graph_attr):
             for device in network.devices:
                 with Cluster(f"Device: {device.hostname}"):
                     device_node = Router(device.hostname)
@@ -399,7 +387,7 @@ class DiagramsGenerator:
         graph_attr = self._get_optimized_graph_attr("general")
         
         with Diagram("Network Overview", show=False, filename=os.path.join(self.output_dir, filename), 
-                     outformat="png", direction="TB", graph_attr=graph_attr):
+                     outformat="png", direction=self._get_diagram_direction("general"), graph_attr=graph_attr):
             for device in network.devices:
                 with Cluster(f"Device: {device.hostname}"):
                     device_node = Router(device.hostname)
@@ -420,7 +408,7 @@ class DiagramsGenerator:
         
         # Generate SVG version
         with Diagram("Network Overview", show=False, filename=os.path.join(self.output_dir, filename), 
-                     outformat="svg", direction="TB", graph_attr=graph_attr):
+                     outformat="svg", direction=self._get_diagram_direction("general"), graph_attr=graph_attr):
             for device in network.devices:
                 with Cluster(f"Device: {device.hostname}"):
                     device_node = Router(device.hostname)
@@ -451,6 +439,7 @@ class DiagramsGenerator:
             "topology": self.generate_topology(network, config_id),
             "interfaces": self.generate_interface_diagram(network, config_id),
             "vlans": self.generate_vlan_diagram(network, config_id),
+            "untagged_ports": self.generate_untagged_ports_diagram(network, config_id),
             "routing": self.generate_routing_diagram(network, config_id),
             "overview": self.generate_overview_diagram(network, config_id)
         } 

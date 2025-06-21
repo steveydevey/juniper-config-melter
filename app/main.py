@@ -11,7 +11,8 @@ from typing import Dict, Optional
 
 from app.parsers.juniper_parser import JuniperParser
 from app.parsers.diagrams_generator import DiagramsGenerator
-from app.models.network import Network
+from app.models.network import Network, Device, Interface
+from app.models.juniper import VLAN, Route
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +22,7 @@ app = FastAPI(title="Juniper Config Melter", version="1.0.0")
 
 # Initialize parsers
 parser = JuniperParser()
-generator = DiagramsGenerator()
+generator = DiagramsGenerator(use_mindmap_style=True)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -203,6 +204,70 @@ async def get_sample_config():
         media_type="text/plain",
         filename="ex3300-1.conf"
     )
+
+def ensure_model_list(data_list, model_cls):
+    result = []
+    for item in data_list:
+        if isinstance(item, model_cls):
+            result.append(item)
+        else:
+            result.append(model_cls(**item))
+    return result
+
+@app.post("/regenerate-diagrams/{config_id}")
+async def regenerate_diagrams(
+    config_id: str,
+    use_mindmap_style: bool = Query(True, description="Use mind-map style layout")
+):
+    """Regenerate diagrams for a configuration with specified style"""
+    logger.info(f"Regenerate diagrams request for config: {config_id}, mind-map: {use_mindmap_style}")
+    
+    if config_id not in config_storage:
+        logger.warning(f"Configuration not found: {config_id}")
+        raise HTTPException(status_code=404, detail="Configuration not found")
+    
+    try:
+        config_data = config_storage[config_id]
+        devices = []
+        for device_data in config_data["network"]["devices"]:
+            interfaces = ensure_model_list(device_data["interfaces"], Interface)
+            routing = device_data.get("routing", {})
+            # Fix VLANs
+            if "vlans" in routing:
+                routing["vlans"] = ensure_model_list(routing["vlans"], VLAN)
+            # Fix Routes
+            if "routes" in routing:
+                routing["routes"] = ensure_model_list(routing["routes"], Route)
+            device = Device(
+                hostname=device_data["hostname"],
+                interfaces=interfaces,
+                routing=routing
+            )
+            devices.append(device)
+        network = Network(devices=devices)
+        
+        # Regenerate diagrams
+        logger.info("Regenerating diagrams...")
+        style_generator = DiagramsGenerator(use_mindmap_style=use_mindmap_style)
+        diagrams = style_generator.generate_all_diagrams(network, config_id)
+        logger.info(f"Diagrams regenerated: {list(diagrams.keys())}")
+        
+        # Update stored diagrams
+        config_data["diagrams"] = diagrams
+        
+        result = {
+            "config_id": config_id,
+            "filename": config_data["filename"],
+            "use_mindmap_style": use_mindmap_style,
+            "diagram_types": list(diagrams.keys())
+        }
+        
+        logger.info(f"Diagram regeneration completed successfully: {result}")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error regenerating diagrams: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error regenerating diagrams: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
